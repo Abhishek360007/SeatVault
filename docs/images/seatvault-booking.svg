@@ -1,0 +1,51 @@
+<svg width="1280" height="760" viewBox="0 0 1280 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="760" fill="#0B1020"/>
+  <rect x="42" y="34" width="1196" height="692" rx="28" fill="#111832" stroke="#263154"/>
+  <rect x="80" y="72" width="1120" height="156" rx="24" fill="#182244"/>
+  <text x="116" y="128" fill="#8BE9FD" font-family="Arial, sans-serif" font-size="18" font-weight="700">CONCERT</text>
+  <text x="116" y="178" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="44" font-weight="800">Music Night Live</text>
+  <text x="116" y="210" fill="#B8C3E7" font-family="Arial, sans-serif" font-size="19">Phoenix Arena - Fri, 14 Jun - 86 seats available</text>
+  <rect x="80" y="260" width="760" height="424" rx="22" fill="#0D142A" stroke="#2D3A66"/>
+  <rect x="190" y="294" width="540" height="34" rx="17" fill="#263154"/>
+  <text x="392" y="318" fill="#DDE6FF" font-family="Arial, sans-serif" font-size="16" font-weight="700">STAGE</text>
+  <g fill="#34D399">
+    <circle cx="220" cy="382" r="17"/><circle cx="272" cy="382" r="17"/><circle cx="324" cy="382" r="17"/><circle cx="376" cy="382" r="17"/><circle cx="428" cy="382" r="17"/>
+    <circle cx="220" cy="434" r="17"/><circle cx="272" cy="434" r="17"/><circle cx="324" cy="434" r="17"/><circle cx="376" cy="434" r="17"/><circle cx="428" cy="434" r="17"/>
+    <circle cx="220" cy="486" r="17"/><circle cx="272" cy="486" r="17"/><circle cx="324" cy="486" r="17"/><circle cx="376" cy="486" r="17"/><circle cx="428" cy="486" r="17"/>
+  </g>
+  <g fill="#F5B942">
+    <circle cx="500" cy="382" r="17"/><circle cx="552" cy="382" r="17"/><circle cx="604" cy="382" r="17"/>
+    <circle cx="500" cy="434" r="17"/><circle cx="552" cy="434" r="17"/><circle cx="604" cy="434" r="17"/>
+  </g>
+  <g fill="#6D5EF6">
+    <circle cx="656" cy="382" r="17"/><circle cx="708" cy="382" r="17"/>
+    <circle cx="656" cy="434" r="17"/><circle cx="708" cy="434" r="17"/>
+  </g>
+  <g fill="#647091">
+    <circle cx="500" cy="486" r="17"/><circle cx="552" cy="486" r="17"/><circle cx="604" cy="486" r="17"/>
+  </g>
+  <g fill="#FB6A85">
+    <circle cx="656" cy="486" r="17"/><circle cx="708" cy="486" r="17"/>
+  </g>
+  <text x="118" y="632" fill="#B8C3E7" font-family="Arial, sans-serif" font-size="18">Available</text>
+  <circle cx="100" cy="625" r="8" fill="#34D399"/>
+  <text x="240" y="632" fill="#B8C3E7" font-family="Arial, sans-serif" font-size="18">Selected</text>
+  <circle cx="222" cy="625" r="8" fill="#F5B942"/>
+  <text x="370" y="632" fill="#B8C3E7" font-family="Arial, sans-serif" font-size="18">Held</text>
+  <circle cx="352" cy="625" r="8" fill="#6D5EF6"/>
+  <text x="470" y="632" fill="#B8C3E7" font-family="Arial, sans-serif" font-size="18">Sold</text>
+  <circle cx="452" cy="625" r="8" fill="#FB6A85"/>
+  <rect x="878" y="260" width="322" height="424" rx="22" fill="#151E3B" stroke="#2D3A66"/>
+  <text x="914" y="316" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="28" font-weight="800">Order summary</text>
+  <rect x="914" y="358" width="250" height="54" rx="14" fill="#0D142A"/>
+  <text x="938" y="392" fill="#DDE6FF" font-family="Arial, sans-serif" font-size="18">A5 - Platinum</text>
+  <rect x="914" y="426" width="250" height="54" rx="14" fill="#0D142A"/>
+  <text x="938" y="460" fill="#DDE6FF" font-family="Arial, sans-serif" font-size="18">A6 - Platinum</text>
+  <line x1="914" y1="514" x2="1164" y2="514" stroke="#2D3A66"/>
+  <text x="914" y="554" fill="#B8C3E7" font-family="Arial, sans-serif" font-size="19">Subtotal</text>
+  <text x="1080" y="554" fill="#DDE6FF" font-family="Arial, sans-serif" font-size="19">INR 2400</text>
+  <text x="914" y="594" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="24" font-weight="800">Total</text>
+  <text x="1062" y="594" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="24" font-weight="800">INR 2500</text>
+  <rect x="914" y="622" width="250" height="46" rx="16" fill="#22D3EE"/>
+  <text x="985" y="652" fill="#07111F" font-family="Arial, sans-serif" font-size="18" font-weight="800">Checkout</text>
+</svg>

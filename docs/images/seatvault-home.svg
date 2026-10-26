@@ -1,0 +1,39 @@
+<svg width="1280" height="760" viewBox="0 0 1280 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="760" fill="#0B1020"/>
+  <rect x="42" y="34" width="1196" height="692" rx="28" fill="#111832" stroke="#263154"/>
+  <rect x="42" y="34" width="1196" height="92" rx="28" fill="#151E3B"/>
+  <text x="86" y="91" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="34" font-weight="700">SeatVault</text>
+  <text x="1026" y="88" fill="#C8D3F5" font-family="Arial, sans-serif" font-size="20">API</text>
+  <rect x="1082" y="58" width="112" height="42" rx="21" fill="#6D5EF6"/>
+  <text x="1114" y="86" fill="white" font-family="Arial, sans-serif" font-size="18" font-weight="700">Sign in</text>
+  <text x="86" y="194" fill="#8BE9FD" font-family="Arial, sans-serif" font-size="18" font-weight="700">CONCURRENCY-SAFE TICKETING</text>
+  <text x="86" y="262" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="58" font-weight="800">Book the best seats</text>
+  <text x="86" y="326" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="58" font-weight="800">before they're gone.</text>
+  <text x="88" y="374" fill="#B8C3E7" font-family="Arial, sans-serif" font-size="22">Live events, real-time seat maps, and checkout holds while users pay.</text>
+  <rect x="86" y="420" width="560" height="64" rx="18" fill="#0D142A" stroke="#2D3A66"/>
+  <text x="118" y="461" fill="#7886B4" font-family="Arial, sans-serif" font-size="20">Search events, venues...</text>
+  <rect x="516" y="430" width="116" height="44" rx="14" fill="#22D3EE"/>
+  <text x="548" y="459" fill="#07111F" font-family="Arial, sans-serif" font-size="18" font-weight="700">Search</text>
+  <text x="86" y="555" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="30" font-weight="800">Upcoming events</text>
+  <g>
+    <rect x="86" y="588" width="330" height="102" rx="18" fill="#182244" stroke="#2D3A66"/>
+    <rect x="106" y="608" width="72" height="62" rx="16" fill="#7C5CFF"/>
+    <text x="126" y="649" fill="white" font-family="Arial, sans-serif" font-size="28" font-weight="800">EV</text>
+    <text x="198" y="630" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="21" font-weight="700">Music Night Live</text>
+    <text x="198" y="660" fill="#AEB9DD" font-family="Arial, sans-serif" font-size="17">Phoenix Arena</text>
+  </g>
+  <g>
+    <rect x="448" y="588" width="330" height="102" rx="18" fill="#182244" stroke="#2D3A66"/>
+    <rect x="468" y="608" width="72" height="62" rx="16" fill="#22D3EE"/>
+    <text x="488" y="649" fill="#07111F" font-family="Arial, sans-serif" font-size="28" font-weight="800">SP</text>
+    <text x="560" y="630" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="21" font-weight="700">League Final</text>
+    <text x="560" y="660" fill="#AEB9DD" font-family="Arial, sans-serif" font-size="17">City Stadium</text>
+  </g>
+  <g>
+    <rect x="810" y="588" width="330" height="102" rx="18" fill="#182244" stroke="#2D3A66"/>
+    <rect x="830" y="608" width="72" height="62" rx="16" fill="#34D399"/>
+    <text x="850" y="649" fill="#07111F" font-family="Arial, sans-serif" font-size="28" font-weight="800">CF</text>
+    <text x="922" y="630" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="21" font-weight="700">Tech Conference</text>
+    <text x="922" y="660" fill="#AEB9DD" font-family="Arial, sans-serif" font-size="17">Expo Center</text>
+  </g>
+</svg>

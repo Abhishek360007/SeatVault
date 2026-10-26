@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>SeatVault · Live Event Ticketing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="styles.css"/>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%9F%EF%B8%8F%3C/text%3E%3C/svg%3E"/>
+</head>
+<body>
+
+<!-- ============================== NAVBAR ============================== -->
+<header class="nav">
+    <div class="nav-inner">
+        <a class="brand" href="#" id="homeLink">
+            <span class="brand-mark">🎟️</span>
+            <span class="brand-name">Seat<span>Vault</span></span>
+        </a>
+
+        <div class="nav-actions">
+            <a class="nav-link" href="/swagger-ui.html" target="_blank" rel="noopener">API</a>
+            <button id="navCreate" class="btn btn-soft hidden">＋ Create event</button>
+            <button id="navTickets" class="btn btn-soft hidden">My tickets</button>
+            <button id="navLogin" class="btn btn-primary">Sign in</button>
+            <div id="navUser" class="user-menu hidden">
+                <button id="userChip" class="user-chip">
+                    <span class="avatar" id="userAvatar">A</span>
+                    <span class="user-name" id="userName">User</span>
+                    <span class="role-tag" id="userRole">USER</span>
+                    <span class="chev">▾</span>
+                </button>
+                <div id="userDropdown" class="dropdown hidden">
+                    <button id="ddTickets">🎫 My tickets</button>
+                    <button id="ddCreate" class="hidden">＋ Create event</button>
+                    <button id="ddLogout">↪ Sign out</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- ============================== TOAST ============================== -->
+<div id="toastWrap" class="toast-wrap"></div>
+
+<!-- ============================== HOME VIEW ============================== -->
+<main id="viewHome" class="view">
+    <section class="hero">
+        <div class="hero-glow"></div>
+        <div class="hero-content">
+            <span class="hero-kicker">Concurrency-safe ticketing · never oversells</span>
+            <h1>Book the best seats<br/>before they're gone.</h1>
+            <p>Live events, real-time seat maps, and a checkout that holds your seats while you pay.</p>
+            <div class="hero-search">
+                <input id="heroSearch" placeholder="Search events, venues…"/>
+                <button id="heroSearchBtn" class="btn btn-primary">Search</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="section-head">
+            <h2>Upcoming events</h2>
+            <div class="section-sub" id="eventCount"></div>
+        </div>
+        <div id="eventsGrid" class="events-grid"></div>
+        <div id="eventsPager" class="pager"></div>
+    </section>
+</main>
+
+<!-- ============================== BOOKING VIEW ============================== -->
+<main id="viewBooking" class="view hidden">
+    <button id="backToHome" class="back-btn">← All events</button>
+
+    <div class="booking-banner" id="bookingBanner">
+        <div class="bb-overlay"></div>
+        <div class="bb-content">
+            <span class="bb-cat" id="bbCat">EVENT</span>
+            <h1 id="bbTitle">Event</h1>
+            <div class="bb-meta">
+                <span id="bbVenue">📍 Venue</span>
+                <span id="bbDate">🗓️ Date</span>
+                <span id="bbAvail" class="bb-avail">— available</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Luma/District-style Event Header Info Bar -->
+    <div class="event-info-bar">
+        <div class="host-info">
+            <div class="host-avatar" id="hostAvatar">SV</div>
+            <div>
+                <div class="host-label">Hosted by</div>
+                <div class="host-name" id="eventHost">SeatVault Community</div>
+            </div>
+        </div>
+        <div class="event-actions">
+            <button class="action-link-btn" id="addToCalBtn">
+                <span class="icon">📅</span> Add to Calendar
+            </button>
+            <button class="action-link-btn" id="shareEventBtn">
+                <span class="icon">🔗</span> Share Event
+            </button>
+        </div>
+    </div>
+
+    <div class="booking-layout">
+        <section class="seatmap-card">
+            <div class="screen">SCREEN / STAGE</div>
+
+            <div id="seatTiers" class="tier-legend"></div>
+
+            <div id="seatStage" class="seat-stage">
+                <div id="seatmapLoading" class="seat-loading">Loading seat map…</div>
+                <div id="seatmap" class="seatmap"></div>
+            </div>
+
+            <div class="status-legend">
+                <span><i class="dot dot-available"></i> Available</span>
+                <span><i class="dot dot-selected"></i> Selected</span>
+                <span><i class="dot dot-held"></i> On hold</span>
+                <span><i class="dot dot-booked"></i> Sold</span>
+            </div>
+        </section>
+
+        <aside class="summary-card">
+            <h3>Order summary</h3>
+            <div id="summaryEmpty" class="summary-empty">
+                <div class="summary-empty-icon">🪑</div>
+                Pick seats from the map to start your order.
+            </div>
+            <div id="summaryList" class="summary-list hidden"></div>
+            <div id="summaryTotals" class="summary-totals hidden">
+                <div class="row"><span>Subtotal</span><span id="sumSubtotal">₹0</span></div>
+                <div class="row muted"><span>Convenience fee</span><span id="sumFee">₹0</span></div>
+                <div class="row total"><span>Total</span><span id="sumTotal">₹0</span></div>
+            </div>
+            <button id="checkoutBtn" class="btn btn-primary btn-block" disabled>Select seats</button>
+            <p class="summary-note">Seats are held for 5 minutes once you check out.</p>
+        </aside>
+    </div>
+</main>
+
+<!-- ============================== AUTH MODAL ============================== -->
+<div id="authModal" class="modal-backdrop hidden">
+    <div class="modal auth-modal">
+        <button class="modal-close" data-close="authModal">✕</button>
+        <div class="auth-brand"><span class="brand-mark">🎟️</span> Seat<span class="accent">Vault</span></div>
+        <div class="seg">
+            <button class="seg-btn active" data-auth="login">Sign in</button>
+            <button class="seg-btn" data-auth="register">Create account</button>
+        </div>
+
+        <form id="loginForm" class="form">
+            <label class="field"><span>Email</span><input type="email" name="email" required autocomplete="username" placeholder="you@example.com"/></label>
+            <label class="field"><span>Password</span><input type="password" name="password" required autocomplete="current-password" placeholder="••••••••"/></label>
+            <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+            <p class="form-hint">New here? Create an account to start booking. Admin access is configured by the operator.</p>
+        </form>
+
+        <form id="registerForm" class="form hidden">
+            <label class="field"><span>Full name</span><input name="fullName" required placeholder="Alex Doe"/></label>
+            <label class="field"><span>Email</span><input type="email" name="email" required autocomplete="username" placeholder="you@example.com"/></label>
+            <label class="field"><span>Password</span><input type="password" name="password" required minlength="8" maxlength="72" autocomplete="new-password" placeholder="At least 8 characters"/></label>
+            <button class="btn btn-primary btn-block" type="submit">Create account</button>
+        </form>
+    </div>
+</div>
+
+<!-- ============================== CHECKOUT / PAYMENT MODAL ============================== -->
+<div id="payModal" class="modal-backdrop hidden">
+    <div class="modal pay-modal">
+        <button class="modal-close" data-close="payModal" id="payClose">✕</button>
+        <h3>Complete payment</h3>
+        <div class="hold-timer">
+            <span>Seats held — pay within</span>
+            <span id="payCountdown" class="countdown">5:00</span>
+        </div>
+
+        <div class="pay-order">
+            <div id="payEventLine" class="pay-event">Event</div>
+            <div id="paySeats" class="pay-seats"></div>
+            <div class="pay-total-row"><span>Amount payable</span><span id="payTotal" class="pay-amount">₹0</span></div>
+        </div>
+
+        <div class="pay-methods">
+            <label class="pay-method selected">
+                <input type="radio" name="pm" value="CARD" checked/>
+                <span class="pm-body"><span class="pm-title">💳 Card / UPI</span><span class="pm-sub">Approves instantly</span></span>
+            </label>
+            <label class="pay-method">
+                <input type="radio" name="pm" value="FAIL_CARD"/>
+                <span class="pm-body"><span class="pm-title">🚫 Declined card</span><span class="pm-sub">Demo: payment fails, seats stay held</span></span>
+            </label>
+            <label class="pay-method">
+                <input type="radio" name="pm" value="TIMEOUT_CARD"/>
+                <span class="pm-body"><span class="pm-title">⏳ Slow gateway</span><span class="pm-sub">Demo: provider times out</span></span>
+            </label>
+        </div>
+
+        <p class="pay-note">🔒 Safe to retry — if your connection drops, paying again won't charge you twice.</p>
+
+        <div class="pay-actions">
+            <button id="cancelHoldBtn" class="btn btn-ghost">Cancel &amp; release</button>
+            <button id="payNowBtn" class="btn btn-primary">Pay <span id="payNowAmount"></span></button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================== CONFIRMATION MODAL ============================== -->
+<div id="confirmModal" class="modal-backdrop hidden">
+    <div class="modal ticket-modal">
+        <div class="ticket">
+            <div class="ticket-top">
+                <div class="ticket-check">✓</div>
+                <h3>Booking confirmed!</h3>
+                <p>Your seats are locked in. See you there.</p>
+            </div>
+            <div class="ticket-perf"></div>
+            <div class="ticket-body">
+                <div class="ticket-row"><span>Event</span><strong id="tkEvent">—</strong></div>
+                <div class="ticket-row"><span>Seats</span><strong id="tkSeats">—</strong></div>
+                <div class="ticket-row"><span>Booking ID</span><strong id="tkId">—</strong></div>
+                <div class="ticket-row"><span>Amount paid</span><strong id="tkAmount">—</strong></div>
+                <div class="ticket-row"><span>Payment</span><strong id="tkPayStatus">—</strong></div>
+                <div class="ticket-qr" id="tkQr"></div>
+            </div>
+            <button class="btn btn-primary btn-block" data-close="confirmModal" id="confirmDone">Done</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================== ADMIN: CREATE EVENT MODAL ============================== -->
+<div id="createModal" class="modal-backdrop hidden">
+    <div class="modal create-modal">
+        <button class="modal-close" data-close="createModal">✕</button>
+        <h3>Create an event <span class="role-tag admin">ADMIN</span></h3>
+        <form id="createForm" class="form grid2">
+            <label class="field"><span>Title</span><input name="title" required maxlength="255" placeholder="Coldplay Live 2027"/></label>
+            <label class="field"><span>Venue</span><input name="venue" required maxlength="255" placeholder="Wembley Stadium"/></label>
+            <label class="field span2"><span>Description</span><input name="description" maxlength="5000" placeholder="Music of the Spheres tour"/></label>
+            <label class="field"><span>Date &amp; time</span><input name="eventDateTime" type="datetime-local" required/></label>
+            <label class="field"><span>Category</span>
+                <select name="category">
+                    <option>Concert</option><option>Sports</option><option>Theatre</option><option>Comedy</option><option>Conference</option>
+                </select>
+            </label>
+            <label class="field"><span>Seating</span>
+                <select name="mode" id="createMode"><option value="grid">Grid (rows × seats)</option><option value="flat">Flat capacity</option></select>
+            </label>
+            <label class="field" id="rowsF"><span>Rows</span><input name="rows" type="number" min="1" max="26" value="6"/></label>
+            <label class="field" id="perRowF"><span>Seats / row</span><input name="seatsPerRow" type="number" min="1" value="10"/></label>
+            <label class="field hidden" id="capF"><span>Total capacity</span><input name="totalCapacity" type="number" min="1" value="60"/></label>
+            <label class="field"><span>Currency</span><input name="currency" maxlength="3" value="INR"/></label>
+            <label class="field"><span>Base price / seat</span><input name="basePrice" type="number" min="0" step="0.01" value="500"/></label>
+            <label class="field"><span>Convenience fee / seat</span><input name="convenienceFee" type="number" min="0" step="0.01" value="30"/></label>
+            <p class="form-hint span2" style="text-align:left">💡 Prices are per seat in major units (e.g. ₹500). Optional: give the front rows a higher “Premium” price (grid seating only).</p>
+            <label class="field" id="premRowsF"><span>Premium front rows (optional)</span><input name="premiumRows" type="number" min="0" value="0"/></label>
+            <label class="field" id="premPriceF"><span>Premium price / seat</span><input name="premiumPrice" type="number" min="0" step="0.01" placeholder="e.g. 1200"/></label>
+            <button class="btn btn-primary btn-block span2" type="submit">Create event</button>
+        </form>
+    </div>
+</div>
+
+<!-- ============================== MY TICKETS DRAWER ============================== -->
+<div id="ticketsDrawer" class="drawer-backdrop hidden">
+    <aside class="drawer">
+        <div class="drawer-head">
+            <h3>My tickets</h3>
+            <button class="modal-close" data-close="ticketsDrawer">✕</button>
+        </div>
+        <div id="ticketsList" class="tickets-list"></div>
+    </aside>
+</div>
+
+<!-- ============================== FOOTER ============================== -->
+<footer class="footer" style="text-align: center; padding: 24px; margin-top: 40px; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--muted);">
+    <p>&copy; 2026 SeatVault &middot; Built by <a href="https://github.com/Abhishek360007" style="color: var(--primary); text-decoration: none;">Abhishek Raj</a> &middot; <a href="PrivacyPolicy.html" style="color: var(--primary); text-decoration: none;">Privacy Policy</a> &middot; <a href="TermsOfService.html" style="color: var(--primary); text-decoration: none;">Terms of Service</a></p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+name: SeatVault CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    name: Build, Verify and Scan
+    runs-on: ubuntu-latest
+
+    services:
+      # Testcontainers will automatically spin up PostgreSQL and Redis,
+      # but we can declare Docker socket mapping as standard for Testcontainers.
+      docker:
+        image: docker:dind
+        options: --privileged
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Make Maven Wrapper Executable
+        run: chmod +x mvnw
+
+      - name: Run Unit & Integration Tests (Maven Verify)
+        # Verify runs failsafe integration tests using Testcontainers
+        run: ./mvnw clean verify
+
+      - name: Run OWASP Dependency Check
+        run: ./mvnw org.owasp:dependency-check-maven:check
+
+      - name: Build Docker Image
+        run: docker build -t seatvault-app:${{ github.sha }} .
+
+      - name: Scan Image with Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: seatvault-app:${{ github.sha }}
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true

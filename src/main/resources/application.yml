@@ -1,0 +1,132 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: ticket-booking-platform
+
+  datasource:
+    # All connection details come from env vars so the same jar runs locally,
+    # in docker-compose, and on a cloud free tier without rebuilding.
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/seatvault}
+    username: ${DB_USERNAME:seatvault}
+    password: ${DB_PASSWORD:seatvault}
+    hikari:
+      # The pool is the real concurrency ceiling for pessimistic-lock booking:
+      # each SELECT ... FOR UPDATE holds a connection for the txn's duration.
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 20000
+      pool-name: seatvault-pool
+
+  jpa:
+    hibernate:
+      # Flyway owns the schema. Hibernate must never auto-DDL in any profile,
+      # otherwise it would race/conflict with migrations.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        # Surfaces N+1 / implicit-write surprises early during development.
+        format_sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+      lettuce:
+        pool:
+          max-active: ${REDIS_POOL_MAX_ACTIVE:20}
+          max-idle: ${REDIS_POOL_MAX_IDLE:8}
+          min-idle: ${REDIS_POOL_MIN_IDLE:2}
+          max-wait: 2000ms
+    web:
+      pageable:
+        # Hard cap so ?size=999999999 on a public list endpoint can't force a huge query.
+        max-page-size: ${MAX_PAGE_SIZE:100}
+        default-page-size: 20
+
+# Application-specific knobs grouped under a custom namespace.
+app:
+  jwt:
+    # Override in every real environment. Must be >= 256 bits for HS256.
+    secret: ${JWT_SECRET:change-me-in-prod-this-is-a-dev-only-secret-key-0123456789}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:15}
+    refresh-expiration-days: ${JWT_REFRESH_EXPIRATION_DAYS:7}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+  security:
+    # CIDR ranges of trusted reverse proxies/load balancers allowed to set
+    # X-Forwarded-For. Empty means the header is never trusted (safe default for
+    # a directly-exposed instance) — set this behind a real LB/ingress.
+    trusted-proxies: ${TRUSTED_PROXIES:}
+  booking:
+    hold-duration-minutes: ${HOLD_DURATION_MINUTES:5}
+    # Concurrency control for the hold path: PESSIMISTIC (SELECT ... FOR UPDATE,
+    # default, best for hot contention) or OPTIMISTIC (@Version + retry).
+    locking-strategy: ${BOOKING_LOCKING_STRATEGY:PESSIMISTIC}
+    optimistic-max-retries: ${BOOKING_OPTIMISTIC_RETRIES:5}
+    max-seats-per-booking: ${BOOKING_MAX_SEATS:10}
+    # Optional app-tier lock in front of the DB (bonus path). Off by default.
+    redis-lock-enabled: ${BOOKING_REDIS_LOCK:false}
+    # Expired-hold release job (Phase 6).
+    release-interval-ms: ${RELEASE_INTERVAL_MS:30000}
+    release-initial-delay-ms: ${RELEASE_INITIAL_DELAY_MS:15000}
+    release-batch-size: ${RELEASE_BATCH_SIZE:200}
+    rate-limit:
+      enabled: ${BOOKING_RATE_LIMIT_ENABLED:true}
+      max-requests: ${BOOKING_RATE_MAX:10}
+      window-seconds: ${BOOKING_RATE_WINDOW:60}
+  admin:
+    # Bootstrap admin seeded on startup if absent. OVERRIDE in production.
+    email: ${ADMIN_EMAIL:admin@seatvault.local}
+    password: ${ADMIN_PASSWORD:admin12345}
+    full-name: ${ADMIN_NAME:Platform Admin}
+  waiting-room:
+    admission-batch-size: ${WAITING_ROOM_BATCH_SIZE:50}
+    admission-interval-ms: ${WAITING_ROOM_INTERVAL_MS:10000}
+    admission-initial-delay-ms: ${WAITING_ROOM_INITIAL_DELAY_MS:15000}
+    admission-token-ttl-seconds: ${WAITING_ROOM_TOKEN_TTL_SECONDS:120}
+  ticket:
+    # HMAC-SHA256 key that signs e-ticket QR tokens. Override in every real environment.
+    hmac-secret: ${TICKET_HMAC_SECRET:change-me-in-prod-this-is-a-dev-only-ticket-secret-0123456789}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+logging:
+  level:
+    com.seatvault: INFO
+    org.flywaydb: INFO
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      paymentGateway:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        slowCallRateThreshold: 75
+        slowCallDurationThreshold: 2000ms

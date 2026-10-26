@@ -1,0 +1,35 @@
+<svg width="1280" height="760" viewBox="0 0 1280 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="760" fill="#0B1020"/>
+  <rect x="42" y="34" width="1196" height="692" rx="28" fill="#111832" stroke="#263154"/>
+  <rect x="370" y="96" width="540" height="568" rx="28" fill="#151E3B" stroke="#2D3A66"/>
+  <text x="424" y="164" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="34" font-weight="800">Complete payment</text>
+  <rect x="424" y="198" width="432" height="56" rx="18" fill="#0D142A"/>
+  <text x="452" y="234" fill="#B8C3E7" font-family="Arial, sans-serif" font-size="20">Seats held - pay within</text>
+  <text x="756" y="234" fill="#22D3EE" font-family="Arial, sans-serif" font-size="24" font-weight="800">04:52</text>
+  <rect x="424" y="286" width="432" height="116" rx="20" fill="#0D142A" stroke="#2D3A66"/>
+  <text x="454" y="326" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="22" font-weight="700">Music Night Live</text>
+  <text x="454" y="360" fill="#B8C3E7" font-family="Arial, sans-serif" font-size="18">Seats A5, A6 - Platinum</text>
+  <text x="454" y="386" fill="#8BE9FD" font-family="Arial, sans-serif" font-size="18">Amount payable: INR 2500</text>
+  <rect x="424" y="432" width="432" height="64" rx="18" fill="#18324A" stroke="#22D3EE"/>
+  <circle cx="462" cy="464" r="12" fill="#22D3EE"/>
+  <text x="492" y="458" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="20" font-weight="700">Card / UPI</text>
+  <text x="492" y="482" fill="#B8C3E7" font-family="Arial, sans-serif" font-size="15">Approves instantly</text>
+  <rect x="424" y="512" width="432" height="64" rx="18" fill="#0D142A" stroke="#2D3A66"/>
+  <circle cx="462" cy="544" r="12" fill="#647091"/>
+  <text x="492" y="538" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="20" font-weight="700">Declined card</text>
+  <text x="492" y="562" fill="#B8C3E7" font-family="Arial, sans-serif" font-size="15">Demo failure path</text>
+  <rect x="424" y="596" width="432" height="46" rx="16" fill="#6D5EF6"/>
+  <text x="578" y="625" fill="white" font-family="Arial, sans-serif" font-size="18" font-weight="800">Pay now</text>
+  <g>
+    <rect x="104" y="164" width="198" height="118" rx="22" fill="#0D142A" stroke="#2D3A66"/>
+    <text x="132" y="208" fill="#8BE9FD" font-family="Arial, sans-serif" font-size="17" font-weight="700">SAFE RETRY</text>
+    <text x="132" y="244" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="28" font-weight="800">No double</text>
+    <text x="132" y="274" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="28" font-weight="800">charge</text>
+  </g>
+  <g>
+    <rect x="978" y="164" width="198" height="118" rx="22" fill="#0D142A" stroke="#2D3A66"/>
+    <text x="1006" y="208" fill="#8BE9FD" font-family="Arial, sans-serif" font-size="17" font-weight="700">BOOKING</text>
+    <text x="1006" y="244" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="28" font-weight="800">Confirmed</text>
+    <text x="1006" y="274" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="28" font-weight="800">once</text>
+  </g>
+</svg>

@@ -1,0 +1,64 @@
+# ============================================================================
+# Local orchestration: Postgres + Redis + the app, one command:
+#   docker compose up --build
+#
+# During Phase 1 you can bring up just the backing services:
+#   docker compose up -d postgres redis
+# and run the app from your IDE against localhost.
+# ============================================================================
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: seatvault-postgres
+    environment:
+      POSTGRES_DB: seatvault
+      POSTGRES_USER: seatvault
+      POSTGRES_PASSWORD: seatvault
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seatvault -d seatvault"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: seatvault-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: seatvault-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/seatvault
+      DB_USERNAME: seatvault
+      DB_PASSWORD: seatvault
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: change-me-in-prod-this-is-a-dev-only-secret-key-0123456789
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
