@@ -1,11 +1,27 @@
 # SeatVault - Enterprise Event Ticket Booking Platform
 
+[![CI](https://github.com/Abhishek360007/SeatVault/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Abhishek360007/SeatVault/actions/workflows/ci.yml)
 [![Project Status](https://img.shields.io/badge/Status-Production--Hardened%20Core-brightgreen.svg)](#project-status)
 [![Java Version](https://img.shields.io/badge/Java-17-orange.svg)](https://openjdk.org/projects/jdk/17/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-green.svg)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-green.svg)](https://spring.io/projects/spring-boot)
 [![Code Coverage](https://img.shields.io/badge/Coverage-40%25%20Line%20Enforced-blue.svg)](#code-coverage)
 
 SeatVault is a high-performance, concurrency-safe, enterprise event ticketing platform built with Spring Boot 3, PostgreSQL, Redis, and Vanilla JS. It is designed to handle high-demand ticket drops, zero-overselling guarantees, payment idempotency, virtual waiting rooms, PDF e-ticket generation, gate check-in scanning, and production observability.
+
+## 📸 Screenshots
+
+| Discover events | Dark mode |
+| --- | --- |
+| ![Home page with search, category chips and filters](docs/screenshots/home.png) | ![The same page in dark mode](docs/screenshots/home-dark.png) |
+| **Live seat map** | **Checkout** |
+| ![Event page with the live seat map and order summary](docs/screenshots/seat-map.png) | ![Three-column checkout: summary, payment, ticket preview](docs/screenshots/checkout.png) |
+| **QR ticket pass** | **Gate check-in scanner** |
+| ![Wallet-style ticket pass with its QR code](docs/screenshots/ticket-pass.png) | ![Scanner admitting a ticket read by the camera](docs/screenshots/gate-scanner.png) |
+
+<p align="center">
+  <img src="docs/screenshots/email-confirmation.png" alt="Booking confirmation email with the ticket card and order summary" width="520"/><br/>
+  <sub>Booking confirmation email (PDF tickets attached)</sub>
+</p>
 
 
 

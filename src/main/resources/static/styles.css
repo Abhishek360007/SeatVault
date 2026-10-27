@@ -231,11 +231,12 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 .back-btn:hover { color: var(--text); }
 .booking-banner { position: relative; height: 200px; border-radius: 20px; overflow: hidden; display: flex; align-items: flex-end; padding: 28px; margin-bottom: 26px; border: 1px solid var(--border); }
 .bb-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent, rgba(0,0,0,.6)); }
-.bb-content { position: relative; z-index: 1; }
+/* The banner is always a dark gradient, so its text is light in both themes. */
+.bb-content { position: relative; z-index: 1; color: #fff; }
 .bb-cat { font-size: .7rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; background: rgba(0,0,0,.4); padding: 5px 12px; border-radius: 999px; }
 .bb-content h1 { font-size: 2rem; margin: 12px 0 10px; }
 .bb-meta { display: flex; flex-wrap: wrap; gap: 18px; color: #e7e9f5; font-size: .92rem; font-weight: 600; }
-.bb-avail { color: var(--green) !important; }
+.bb-avail { color: #6ee7b7 !important; }
 
 .booking-layout { display: grid; grid-template-columns: 1fr 340px; gap: 22px; align-items: start; }
 @media (max-width: 920px) { .booking-layout { grid-template-columns: 1fr; } }
@@ -357,6 +358,7 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 .co-methods { display: flex; flex-wrap: wrap; gap: 8px; }
 .co-methods > span { border: 1px solid var(--border); background: var(--surface-2); border-radius: 999px; padding: 6px 12px; font-size: .8rem; font-weight: 700; color: var(--muted); }
 .co-hint { color: var(--muted); font-size: .84rem; margin: 0; }
+#coProviderSimulated:not(.hidden), #coProviderRazorpay:not(.hidden) { display: flex; flex-direction: column; gap: 12px; }
 .test-banner { background: rgba(180,83,9,.1); border: 1px dashed rgba(180,83,9,.45); color: var(--amber); border-radius: 10px; padding: 9px 12px; font-size: .82rem; font-weight: 700; }
 .co-status { border-radius: 10px; padding: 11px 13px; font-size: .86rem; font-weight: 600; line-height: 1.45; }
 .co-status.info { background: rgba(29,78,216,.08); border: 1px solid rgba(29,78,216,.3); color: var(--primary-2); }
