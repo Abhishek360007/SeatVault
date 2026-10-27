@@ -2,13 +2,16 @@ package com.seatvault.service;
 
 import com.seatvault.domain.Booking;
 import com.seatvault.domain.BookingStatus;
+import com.seatvault.domain.Event;
 import com.seatvault.domain.Seat;
 import com.seatvault.domain.SeatStatus;
 import com.seatvault.domain.TicketCheckin;
+import com.seatvault.dto.ticket.CheckinSummary;
 import com.seatvault.dto.ticket.TicketVerifyResponse;
 import com.seatvault.exception.ConflictException;
 import com.seatvault.exception.ResourceNotFoundException;
 import com.seatvault.repository.BookingRepository;
+import com.seatvault.repository.EventRepository;
 import com.seatvault.repository.SeatRepository;
 import com.seatvault.repository.TicketCheckinRepository;
 import org.springframework.stereotype.Service;
@@ -37,10 +40,13 @@ public class TicketCheckinService {
     private final BookingRepository bookingRepository;
     private final SeatRepository seatRepository;
     private final TicketCheckinRepository ticketCheckinRepository;
+    private final EventRepository eventRepository;
 
     public TicketCheckinService(BookingRepository bookingRepository,
                                 SeatRepository seatRepository,
-                                TicketCheckinRepository ticketCheckinRepository) {
+                                TicketCheckinRepository ticketCheckinRepository,
+                                EventRepository eventRepository) {
+        this.eventRepository = eventRepository;
         this.bookingRepository = bookingRepository;
         this.seatRepository = seatRepository;
         this.ticketCheckinRepository = ticketCheckinRepository;
@@ -61,7 +67,7 @@ public class TicketCheckinService {
 
         Instant now = Instant.now();
         ticketCheckinRepository.saveAndFlush(new TicketCheckin(booking.getId(), seat.getId(), now, scannerEmail));
-        return response(booking, seat, false, now);
+        return response(booking, seat, false, now, scannerEmail);
     }
 
     /** Re-reads the existing check-in after losing the race in {@link #attemptCheckIn}. Read-only. */
@@ -71,7 +77,17 @@ public class TicketCheckinService {
         Seat seat = loadSeat(payload.seatId());
         TicketCheckin existing = ticketCheckinRepository.findBySeatId(seat.getId())
                 .orElseThrow(() -> new ConflictException("Check-in race detected; please retry the scan"));
-        return response(booking, seat, true, existing.getCheckedInAt());
+        return response(booking, seat, true, existing.getCheckedInAt(), existing.getCheckedInBy());
+    }
+
+    /** Tickets sold vs. admitted so far, for the gate screen. */
+    @Transactional(readOnly = true)
+    public CheckinSummary summary(Long eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
+        long sold = seatRepository.countByEventIdAndStatus(eventId, SeatStatus.BOOKED);
+        long admitted = ticketCheckinRepository.countByEventId(eventId);
+        return new CheckinSummary(eventId, event.getTitle(), sold, admitted);
     }
 
     private void validateCheckinable(Booking booking, Seat seat) {
@@ -93,8 +109,10 @@ public class TicketCheckinService {
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket refers to a seat that no longer exists"));
     }
 
-    private TicketVerifyResponse response(Booking booking, Seat seat, boolean alreadyCheckedIn, Instant checkedInAt) {
+    private TicketVerifyResponse response(Booking booking, Seat seat, boolean alreadyCheckedIn,
+                                          Instant checkedInAt, String checkedInBy) {
         return new TicketVerifyResponse(true, booking.getId(), seat.getId(), seat.getSeatLabel(),
-                booking.getEvent().getTitle(), alreadyCheckedIn, checkedInAt);
+                booking.getEvent().getTitle(), alreadyCheckedIn, checkedInAt,
+                booking.getReference(), seat.getTierName(), booking.getUser().getFullName(), checkedInBy);
     }
 }

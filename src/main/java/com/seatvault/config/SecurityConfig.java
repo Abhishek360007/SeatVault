@@ -57,6 +57,7 @@ public class SecurityConfig {
             "/index.html",
             "/app.js",
             "/styles.css",
+            "/vendor/**",                   // bundled SockJS + STOMP clients
             "/favicon.ico"
     };
 
@@ -64,7 +65,9 @@ public class SecurityConfig {
             "/api/v1/auth/register",
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
-            "/api/v1/auth/logout"
+            "/api/v1/auth/logout",
+            // Provider webhooks can't log in; they're authenticated by HMAC signature instead.
+            "/api/v1/payments/webhook/**"
     };
 
     /**
@@ -83,7 +86,9 @@ public class SecurityConfig {
      */
     private static final String CSP = String.join("; ",
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",
+            // Razorpay's checkout widget: its script, plus the iframe it opens.
+            "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com",
+            "frame-src https://api.razorpay.com https://checkout.razorpay.com",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data:",
@@ -124,6 +129,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(org.springframework.http.HttpMethod.POST, PUBLIC_POST).permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, PUBLIC_GET).permitAll()
+                        // Live seat-map feed. Public like the seat list it mirrors; SockJS uses
+                        // both GET and POST transports, so it's matched for all methods. Clients
+                        // can only subscribe, never publish (see WebSocketConfig).
+                        .requestMatchers("/ws-seatmap/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(eh -> eh.authenticationEntryPoint(authenticationEntryPoint))

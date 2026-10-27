@@ -38,7 +38,7 @@ public class HoldExpiryScheduler {
     }
 
     @Scheduled(
-            fixedDelayString = "${app.booking.release-interval-ms:30000}",
+            fixedDelayString = "${app.booking.release-interval-ms:5000}",
             initialDelayString = "${app.booking.release-initial-delay-ms:15000}")
     public void releaseExpiredHolds() {
         Instant now = Instant.now();

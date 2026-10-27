@@ -14,9 +14,11 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -64,6 +66,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleUnreadable(HttpMessageNotReadableException ex, HttpServletRequest req) {
         log.debug("Unreadable request body on {}: {}", req.getRequestURI(), ex.getMessage());
         return build(HttpStatus.BAD_REQUEST, "Malformed request body", req, List.of());
+    }
+
+    /**
+     * Query/path parameter that can't be converted (e.g. {@code ?category=FOO} or
+     * {@code ?fromDate=yesterday}) → 400 naming the parameter, not 500.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest req) {
+        log.debug("Bad value for parameter '{}' on {}: {}", ex.getName(), req.getRequestURI(), ex.getValue());
+        String message = "Invalid value for parameter '" + ex.getName() + "'";
+        Class<?> type = ex.getRequiredType();
+        if (type != null && type.isEnum()) {
+            message += "; expected one of " + Arrays.toString(type.getEnumConstants());
+        }
+        return build(HttpStatus.BAD_REQUEST, message, req, List.of());
     }
 
     /** Wrong email/password at login. Deliberately vague to avoid user enumeration. */

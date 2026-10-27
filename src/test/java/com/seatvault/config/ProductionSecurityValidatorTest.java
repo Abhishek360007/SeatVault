@@ -11,12 +11,13 @@ class ProductionSecurityValidatorTest {
             new JwtProperties("a-unique-random-production-signing-secret-0123456789", 15, 7);
     private static final TicketProperties GOOD_TICKET =
             new TicketProperties("a-unique-random-production-ticket-hmac-secret-0123456789");
+    private static final PaymentProperties SIMULATED = new PaymentProperties("simulated", null, "s", null, 0);
 
     @Test
     void rejectsDefaultJwtSecretContainingChangeMe() {
         JwtProperties badJwt = new JwtProperties("dev-only-change-me-please", 15, 7);
         ProductionSecurityValidator validator =
-                new ProductionSecurityValidator(badJwt, GOOD_TICKET, "a-strong-unique-password");
+                new ProductionSecurityValidator(badJwt, GOOD_TICKET, "a-strong-unique-password", SIMULATED);
 
         assertThatThrownBy(validator::validate)
                 .isInstanceOf(IllegalStateException.class)
@@ -27,7 +28,7 @@ class ProductionSecurityValidatorTest {
     void rejectsNullJwtSecret() {
         JwtProperties nullJwt = new JwtProperties(null, 15, 7);
         ProductionSecurityValidator validator =
-                new ProductionSecurityValidator(nullJwt, GOOD_TICKET, "a-strong-unique-password");
+                new ProductionSecurityValidator(nullJwt, GOOD_TICKET, "a-strong-unique-password", SIMULATED);
 
         assertThatThrownBy(validator::validate)
                 .isInstanceOf(IllegalStateException.class)
@@ -38,7 +39,7 @@ class ProductionSecurityValidatorTest {
     void rejectsDefaultTicketSecretContainingChangeMe() {
         TicketProperties badTicket = new TicketProperties("dev-only-change-me-please");
         ProductionSecurityValidator validator =
-                new ProductionSecurityValidator(GOOD_JWT, badTicket, "a-strong-unique-password");
+                new ProductionSecurityValidator(GOOD_JWT, badTicket, "a-strong-unique-password", SIMULATED);
 
         assertThatThrownBy(validator::validate)
                 .isInstanceOf(IllegalStateException.class)
@@ -48,7 +49,7 @@ class ProductionSecurityValidatorTest {
     @Test
     void rejectsDefaultAdminPassword() {
         ProductionSecurityValidator validator =
-                new ProductionSecurityValidator(GOOD_JWT, GOOD_TICKET, "admin12345");
+                new ProductionSecurityValidator(GOOD_JWT, GOOD_TICKET, "admin12345", SIMULATED);
 
         assertThatThrownBy(validator::validate)
                 .isInstanceOf(IllegalStateException.class)
@@ -58,8 +59,20 @@ class ProductionSecurityValidatorTest {
     @Test
     void allowsSecureConfiguration() {
         ProductionSecurityValidator validator =
-                new ProductionSecurityValidator(GOOD_JWT, GOOD_TICKET, "a-strong-unique-password");
+                new ProductionSecurityValidator(GOOD_JWT, GOOD_TICKET, "a-strong-unique-password", SIMULATED);
 
         assertThatCode(validator::validate).doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejectsRazorpayWithoutWebhookSecret() {
+        PaymentProperties razorpay = new PaymentProperties("razorpay", null, null,
+                new PaymentProperties.Razorpay("rzp_live_x", "secret", " ", null), 0);
+        ProductionSecurityValidator validator =
+                new ProductionSecurityValidator(GOOD_JWT, GOOD_TICKET, "a-strong-unique-password", razorpay);
+
+        assertThatThrownBy(validator::validate)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("RAZORPAY_WEBHOOK_SECRET");
     }
 }

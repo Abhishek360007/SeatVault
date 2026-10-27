@@ -1,5 +1,10 @@
 package com.seatvault.service;
 
+import com.seatvault.domain.EventCategory;
+import com.seatvault.dto.event.EventSearchCriteria;
+import com.seatvault.repository.EventSpecifications;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import com.seatvault.config.CacheConfig;
 import com.seatvault.domain.Event;
 import com.seatvault.domain.Seat;
@@ -87,6 +92,8 @@ public class EventService {
         event.setBasePriceMinor(request.basePriceMinor() != null ? request.basePriceMinor() : 0L);
         event.setConvenienceFeeMinor(request.convenienceFeeMinor() != null ? request.convenienceFeeMinor() : 0L);
         event.setHighDemand(Boolean.TRUE.equals(request.highDemand()));
+        event.setCategory(request.category() != null ? request.category() : EventCategory.OTHER);
+        event.setCity(normalizeCity(request.city()));
 
         List<Seat> seats = generateSeats(event, request);
         event.setTotalCapacity(seats.size());
@@ -120,6 +127,12 @@ public class EventService {
         if (request.highDemand() != null) {
             event.setHighDemand(request.highDemand());
         }
+        if (request.category() != null) {
+            event.setCategory(request.category());
+        }
+        if (request.city() != null) {
+            event.setCity(normalizeCity(request.city()));
+        }
         // capacity/seats deliberately untouched
         long available = seatRepository.countByEventIdAndStatus(id, SeatStatus.AVAILABLE);
         log.info("Updated event id={}", id);
@@ -150,21 +163,20 @@ public class EventService {
     // ============================ Public reads ============================
 
     /**
-     * Cached per (keyword, venue, fromDate, page, size, sort). Short TTL because
-     * availability drifts as people book; explicit eviction on event writes keeps
-     * the listing fresh.
+     * Filtered, sorted, paginated browse. Cached per (criteria, page, size) with a
+     * short TTL because availability drifts as people book; explicit eviction on
+     * event writes keeps the listing fresh.
+     *
+     * <p>Only the page number and size are taken from {@code pageable}; ordering
+     * comes from {@code criteria.sort()} so clients can't sort on arbitrary columns.
      */
     @Transactional(readOnly = true)
     @Cacheable(cacheNames = CacheConfig.EVENT_SEARCH,
-            key = "T(java.util.Objects).hash(#keyword, #venue, #fromDate, #pageable)")
-    public PagedResponse<EventResponse> search(String keyword, String venue, Instant fromDate, Pageable pageable) {
-        // Build lowercase LIKE patterns here so the repository never receives a null
-        // String param (see EventRepository.search for the PostgreSQL rationale).
-        // A bare "%" matches everything when a filter is absent.
-        String kw = StringUtils.hasText(keyword) ? "%" + keyword.trim().toLowerCase() + "%" : "%";
-        String vn = StringUtils.hasText(venue) ? "%" + venue.trim().toLowerCase() + "%" : "%";
-        Instant from = (fromDate != null) ? fromDate : Instant.EPOCH;
-        Page<Event> page = eventRepository.search(kw, vn, from, pageable);
+            key = "T(java.util.Objects).hash(#criteria, #pageable.pageNumber, #pageable.pageSize)")
+    public PagedResponse<EventResponse> search(EventSearchCriteria criteria, Pageable pageable) {
+        Page<Event> page = eventRepository.findAll(
+                EventSpecifications.from(criteria),
+                PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sortFor(criteria)));
 
         // Single grouped query for available counts across this page (no N+1).
         List<Long> ids = page.getContent().stream().map(Event::getId).toList();
@@ -176,6 +188,12 @@ public class EventService {
         Page<EventResponse> mapped = page.map(e ->
                 toResponse(e, availability.getOrDefault(e.getId(), 0L)));
         return PagedResponse.from(mapped);
+    }
+
+    /** Cities with upcoming events, for the browse filter. */
+    @Transactional(readOnly = true)
+    public List<String> upcomingCities() {
+        return eventRepository.findDistinctCities(Instant.now());
     }
 
     @Transactional(readOnly = true)
@@ -192,6 +210,10 @@ public class EventService {
      * seat-picker UI). Ordered by label for stable display. Only the unfiltered
      * full-seat-map view is cached (the common seat-picker read); status-filtered
      * queries hit the DB so they always reflect the latest availability.
+     *
+     * <p>A hold that has lapsed but not yet been swept is reported as AVAILABLE: the
+     * hold path reclaims such seats on contact (see {@code SeatReservationService}),
+     * so the picker should offer them rather than wait for the release job.
      */
     @Transactional(readOnly = true)
     @Cacheable(cacheNames = CacheConfig.EVENT_SEATS, key = "#eventId", condition = "#statusFilter == null")
@@ -202,14 +224,34 @@ public class EventService {
         List<Seat> seats = (statusFilter == null)
                 ? seatRepository.findByEventIdOrderBySeatLabel(eventId)
                 : seatRepository.findByEventIdAndStatus(eventId, statusFilter);
+        Instant now = Instant.now();
         return seats.stream()
                 .sorted((a, b) -> a.getSeatLabel().compareTo(b.getSeatLabel()))
-                .map(s -> new SeatResponse(s.getId(), s.getSeatLabel(), s.getStatus(),
+                .map(s -> new SeatResponse(s.getId(), s.getSeatLabel(),
+                        s.isHoldExpired(now) ? SeatStatus.AVAILABLE : s.getStatus(),
                         s.getTierName(), s.effectivePriceMinor()))
                 .toList();
     }
 
     // ============================ Helpers ============================
+
+    /**
+     * Popularity is ordered inside the specification (it needs a subquery), so it
+     * gets an unsorted page here; the other keys get id as a stable tie-breaker.
+     */
+    private Sort sortFor(EventSearchCriteria criteria) {
+        Sort.Direction dir = criteria.descending() ? Sort.Direction.DESC : Sort.Direction.ASC;
+        return switch (criteria.sort()) {
+            case POPULARITY -> Sort.unsorted();
+            case PRICE -> Sort.by(dir, "basePriceMinor").and(Sort.by("eventDateTime", "id"));
+            case DATE -> Sort.by(dir, "eventDateTime").and(Sort.by("id"));
+        };
+    }
+
+    /** Trims, and stores blank as null so blank cities never show up in the filter list. */
+    private String normalizeCity(String city) {
+        return StringUtils.hasText(city) ? city.trim() : null;
+    }
 
     /**
      * Generates the seat set from the request, applying tier pricing. Exactly one
@@ -316,7 +358,10 @@ public class EventService {
                 e.getBasePriceMinor(),
                 e.getConvenienceFeeMinor(),
                 e.isHighDemand(),
-                e.getCreatedAt()
+                e.getCreatedAt(),
+                e.getCategory(),
+                e.getCity(),
+                Math.max(0, e.getTotalCapacity() - availableSeats)
         );
     }
 

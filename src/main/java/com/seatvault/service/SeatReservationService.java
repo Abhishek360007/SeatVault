@@ -1,6 +1,7 @@
 package com.seatvault.service;
 
 import com.seatvault.domain.Booking;
+import com.seatvault.domain.BookingStatus;
 import com.seatvault.domain.Event;
 import com.seatvault.domain.Seat;
 import com.seatvault.domain.SeatStatus;
@@ -9,6 +10,8 @@ import com.seatvault.dto.booking.BookingResponse;
 import com.seatvault.exception.ConflictException;
 import com.seatvault.exception.ResourceNotFoundException;
 import com.seatvault.exception.SeatUnavailableException;
+import com.seatvault.notification.NotificationService;
+import com.seatvault.notification.NotificationType;
 import com.seatvault.repository.BookingRepository;
 import com.seatvault.repository.EventRepository;
 import com.seatvault.repository.SeatRepository;
@@ -19,7 +22,9 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The transactional heart of the system: it turns AVAILABLE seats into a HELD
@@ -57,11 +62,14 @@ public class SeatReservationService {
     private final BookingRepository bookingRepository;
     private final EventRepository eventRepository;
     private final CacheInvalidator cacheInvalidator;
+    private final NotificationService notificationService;
 
     public SeatReservationService(SeatRepository seatRepository,
                                   BookingRepository bookingRepository,
                                   EventRepository eventRepository,
-                                  CacheInvalidator cacheInvalidator) {
+                                  CacheInvalidator cacheInvalidator,
+                                  NotificationService notificationService) {
+        this.notificationService = notificationService;
         this.seatRepository = seatRepository;
         this.bookingRepository = bookingRepository;
         this.eventRepository = eventRepository;
@@ -114,6 +122,7 @@ public class SeatReservationService {
     /** Shared hold logic for both strategies. */
     private BookingResponse hold(User user, Event event, List<Seat> seats, List<Long> seatIds, Instant expiresAt) {
         validateAllPresent(seats, seatIds);
+        reclaimExpiredHolds(seats, Instant.now());
         validateAllAvailable(seats);
 
         // Freeze the payable amount NOW (hold time) so checkout can't be repriced.
@@ -150,7 +159,8 @@ public class SeatReservationService {
      */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public BookingResponse confirm(Long bookingId, Long userId, Instant now) {
-        Booking booking = bookingRepository.findById(bookingId)
+        // Same row lock as cancel(), so the two can never interleave.
+        Booking booking = bookingRepository.findByIdForUpdate(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
         requireOwner(booking, userId);
 
@@ -171,6 +181,9 @@ public class SeatReservationService {
         }
         booking.confirm(now);
         seatRepository.saveAll(seats);
+        // Same transaction: the emails exist exactly when the confirmation commits.
+        notificationService.enqueue(NotificationType.BOOKING_CONFIRMED, booking);
+        notificationService.enqueue(NotificationType.PAYMENT_RECEIPT, booking);
         List<com.seatvault.dto.booking.SeatStatusUpdate> updates = seats.stream()
                 .map(s -> new com.seatvault.dto.booking.SeatStatusUpdate(s.getId(), "BOOKED", null))
                 .toList();
@@ -185,7 +198,9 @@ public class SeatReservationService {
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public BookingResponse cancel(Long bookingId, Long userId) {
-        Booking booking = bookingRepository.findById(bookingId)
+        // Row lock: serializes with a payment confirming this booking, which takes the
+        // same lock, so a cancel can never interleave with a confirm.
+        Booking booking = bookingRepository.findByIdForUpdate(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
         requireOwner(booking, userId);
         if (!booking.isPending()) {
@@ -194,10 +209,14 @@ public class SeatReservationService {
         List<Long> seatIds = seatRepository.findByBookingId(bookingId).stream().map(Seat::getId).toList();
         List<Seat> seats = seatRepository.findForUpdate(booking.getEvent().getId(), seatIds);
         for (Seat seat : seats) {
+            if (seat.getStatus() != SeatStatus.HELD || !bookingId.equals(seat.getBookingId())) {
+                throw new ConflictException("A seat in this booking changed state; cannot cancel");
+            }
             seat.release();
         }
         booking.cancel();
         seatRepository.saveAll(seats);
+        notificationService.enqueue(NotificationType.BOOKING_CANCELLED, booking);
         List<com.seatvault.dto.booking.SeatStatusUpdate> updates = seats.stream()
                 .map(s -> new com.seatvault.dto.booking.SeatStatusUpdate(s.getId(), "AVAILABLE", null))
                 .toList();
@@ -221,6 +240,36 @@ public class SeatReservationService {
                     "One or more seats do not exist for this event: requested=" + requestedIds.size()
                             + " found=" + seats.size());
         }
+    }
+
+    /**
+     * Frees requested seats whose hold has already lapsed, so they can be taken now
+     * instead of waiting for the next {@link HoldReleaseService} sweep. Runs under the
+     * same protection as the hold itself (row lock, or {@code @Version} check), so it
+     * can't race a concurrent confirm: {@code confirm} rejects a booking past its
+     * expiry, and the sweep re-checks status under its own lock.
+     *
+     * <p>The lapsed bookings are marked EXPIRED here, because once their seat belongs
+     * to someone else the sweep (which finds bookings via their HELD seats) might
+     * never reach them.
+     */
+    private void reclaimExpiredHolds(List<Seat> seats, Instant now) {
+        Set<Long> lapsedBookingIds = new HashSet<>();
+        for (Seat seat : seats) {
+            if (seat.isHoldExpired(now)) {
+                if (seat.getBookingId() != null) {
+                    lapsedBookingIds.add(seat.getBookingId());
+                }
+                seat.release();
+            }
+        }
+        if (lapsedBookingIds.isEmpty()) {
+            return;
+        }
+        List<Booking> lapsed = bookingRepository.findByIdInAndStatus(lapsedBookingIds, BookingStatus.PENDING);
+        lapsed.forEach(Booking::expire);
+        bookingRepository.saveAll(lapsed);
+        log.info("Reclaimed expired hold(s) from booking(s) {}", lapsedBookingIds);
     }
 
     private void validateAllAvailable(List<Seat> seats) {

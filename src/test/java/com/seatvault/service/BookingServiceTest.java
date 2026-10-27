@@ -50,6 +50,7 @@ class BookingServiceTest {
     @Mock RedisLockService redisLockService;
     @Mock EventRepository eventRepository;
     @Mock QueueService queueService;
+    @Mock CheckoutService checkoutService;
 
     BookingService bookingService;
 
@@ -61,7 +62,7 @@ class BookingServiceTest {
                 BookingProperties.LockingStrategy.PESSIMISTIC, 5, 10, false);
         bookingService = new BookingService(reservationService, paymentService, bookingRepository,
                 seatRepository, paymentRepository, paymentGateway, redisLockService, properties,
-                eventRepository, queueService);
+                eventRepository, queueService, checkoutService);
     }
 
     /** A normal (non-high-demand) event, so hold() never touches the waiting room. */

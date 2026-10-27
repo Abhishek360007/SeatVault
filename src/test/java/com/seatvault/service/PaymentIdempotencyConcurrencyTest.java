@@ -118,7 +118,7 @@ class PaymentIdempotencyConcurrencyTest {
         BookingService bookingService = new BookingService(reservationService, paymentService,
                 bookingRepository, seatRepository, paymentRepository, gateway,
                 mock(RedisLockService.class), properties,
-                mock(com.seatvault.repository.EventRepository.class), mock(QueueService.class));
+                mock(com.seatvault.repository.EventRepository.class), mock(QueueService.class), mock(CheckoutService.class));
 
         User user = user();
 

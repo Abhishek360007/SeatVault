@@ -20,7 +20,20 @@ import java.time.Instant;
  * <p>Created in {@link BookingStatus#PENDING} at hold time with an {@code expiresAt}.
  * On successful payment it becomes {@link BookingStatus#CONFIRMED}; if the hold
  * lapses first, the scheduled job marks it {@link BookingStatus#EXPIRED} and
- * releases the seats. We store the seats' link to the booking on the Seat side
+ * releases the seats; the owner can also cancel it while PENDING.
+ *
+ * <h2>State machine</h2>
+ * <pre>
+ *   PENDING ──confirm──▶ CONFIRMED
+ *      │ ──expire───▶ EXPIRED
+ *      └ ──cancel───▶ CANCELLED
+ * </pre>
+ * Every transition starts from PENDING, and the terminal states are final. The
+ * transition methods enforce this and throw {@link IllegalStateException} on any
+ * other move, so a bug can never, say, cancel a paid booking or confirm an expired
+ * one; callers check {@link #isPending()} first and turn a refusal into a 409.
+ *
+ * <p>We store the seats' link to the booking on the Seat side
  * ({@code seat.booking_id}) rather than a JPA collection here, to avoid loading
  * all seats when we only need to flip a booking's status.
  */
@@ -40,6 +53,10 @@ public class Booking extends BaseEntity {
     @JoinColumn(name = "event_id", nullable = false,
             foreignKey = @jakarta.persistence.ForeignKey(name = "fk_bookings_event"))
     private Event event;
+
+    /** Human-facing booking code (e.g. {@code SV-7KX4-92QD}); see {@link BookingReference}. */
+    @Column(nullable = false, length = 16, unique = true, updatable = false)
+    private String reference = BookingReference.generate();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
@@ -90,22 +107,32 @@ public class Booking extends BaseEntity {
     }
 
     public void confirm(Instant when) {
+        requirePending("confirm");
         this.status = BookingStatus.CONFIRMED;
         this.confirmedAt = when;
         this.expiresAt = null;
     }
 
     public void expire() {
+        requirePending("expire");
         this.status = BookingStatus.EXPIRED;
         this.expiresAt = null;
     }
 
     public void cancel() {
+        requirePending("cancel");
         this.status = BookingStatus.CANCELLED;
         this.expiresAt = null;
     }
 
     public boolean isPending() {
         return status == BookingStatus.PENDING;
+    }
+
+    private void requirePending(String transition) {
+        if (status != BookingStatus.PENDING) {
+            throw new IllegalStateException(
+                    "Cannot " + transition + " booking " + getId() + " in status " + status);
+        }
     }
 }

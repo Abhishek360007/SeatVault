@@ -8,6 +8,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
     <link rel="stylesheet" href="styles.css"/>
+    <script>
+        // Apply the saved (or OS-preferred) theme before first paint to avoid a light flash.
+        (function () {
+            var t = null;
+            try { t = localStorage.getItem("sv_theme"); } catch (e) {}
+            if (t !== "light" && t !== "dark") {
+                t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+            }
+            document.documentElement.setAttribute("data-theme", t);
+        })();
+    </script>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%9F%EF%B8%8F%3C/text%3E%3C/svg%3E"/>
 </head>
 <body>
@@ -21,8 +32,10 @@
         </a>
 
         <div class="nav-actions">
+            <button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">🌙</button>
             <a class="nav-link" href="/swagger-ui.html" target="_blank" rel="noopener">API</a>
             <button id="navCreate" class="btn btn-soft hidden">＋ Create event</button>
+            <button id="navScan" class="btn btn-soft hidden">📷 Scan tickets</button>
             <button id="navTickets" class="btn btn-soft hidden">My tickets</button>
             <button id="navLogin" class="btn btn-primary">Sign in</button>
             <div id="navUser" class="user-menu hidden">
@@ -65,6 +78,33 @@
             <h2>Upcoming events</h2>
             <div class="section-sub" id="eventCount"></div>
         </div>
+
+        <div class="filters" id="eventFilters">
+            <div class="cat-chips" id="catChips" role="radiogroup" aria-label="Category"></div>
+            <div class="filter-row">
+                <label class="filter-field"><span>City</span>
+                    <select id="fCity"><option value="">All cities</option></select>
+                </label>
+                <label class="filter-field"><span>From</span><input id="fFrom" type="date"/></label>
+                <label class="filter-field"><span>To</span><input id="fTo" type="date"/></label>
+                <label class="filter-field"><span>Min price</span><input id="fMin" type="number" min="0" step="1" placeholder="0"/></label>
+                <label class="filter-field"><span>Max price</span><input id="fMax" type="number" min="0" step="1" placeholder="Any"/></label>
+                <label class="filter-field"><span>Sort by</span>
+                    <select id="fSort">
+                        <option value="DATE:ASC">Date: soonest first</option>
+                        <option value="DATE:DESC">Date: latest first</option>
+                        <option value="PRICE:ASC">Price: low to high</option>
+                        <option value="PRICE:DESC">Price: high to low</option>
+                        <option value="POPULARITY:DESC">Most popular</option>
+                    </select>
+                </label>
+            </div>
+            <div class="filter-foot">
+                <label class="check"><input id="fAvail" type="checkbox"/> <span>Only show events with seats left</span></label>
+                <button id="fClear" class="btn btn-ghost btn-sm" type="button">Clear filters</button>
+            </div>
+        </div>
+
         <div id="eventsGrid" class="events-grid"></div>
         <div id="eventsPager" class="pager"></div>
     </section>
@@ -106,6 +146,11 @@
         </div>
     </div>
 
+    <section class="event-about hidden" id="eventAbout">
+        <h2>About this event</h2>
+        <p id="eventAboutText"></p>
+    </section>
+
     <div class="booking-layout">
         <section class="seatmap-card">
             <div class="screen">SCREEN / STAGE</div>
@@ -138,8 +183,138 @@
                 <div class="row total"><span>Total</span><span id="sumTotal">₹0</span></div>
             </div>
             <button id="checkoutBtn" class="btn btn-primary btn-block" disabled>Select seats</button>
-            <p class="summary-note">Seats are held for 5 minutes once you check out.</p>
+            <p class="summary-note">Seats are held for a few minutes while you pay.</p>
         </aside>
+    </div>
+</main>
+
+<!-- ============================== SCANNER VIEW (staff) ============================== -->
+<main id="viewScanner" class="view hidden">
+    <div class="checkout-head">
+        <h1>Gate check-in</h1>
+        <div class="scan-stats" id="scanStats" aria-live="polite">—</div>
+    </div>
+    <div class="scan-layout">
+        <section class="co-card">
+            <label class="filter-field"><span>Event at this gate</span>
+                <select id="scanEvent"></select>
+            </label>
+            <div class="scan-camera">
+                <video id="scanVideo" playsinline muted></video>
+                <canvas id="scanCanvas" class="hidden"></canvas>
+                <div class="scan-frame" aria-hidden="true"></div>
+                <div class="scan-idle" id="scanIdle">📷 Camera is off</div>
+            </div>
+            <button id="scanToggle" class="btn btn-primary btn-block">Start camera</button>
+            <p class="co-hint" id="scanHint">Point the camera at a ticket's QR code. Each code is checked with the server; a ticket admits one person once.</p>
+            <form id="scanManual" class="scan-manual">
+                <input id="scanToken" placeholder="…or paste a ticket code" autocomplete="off" spellcheck="false"/>
+                <button class="btn btn-soft" type="submit">Check</button>
+            </form>
+        </section>
+        <section class="co-card">
+            <div class="scan-result idle" id="scanResult" role="status" aria-live="assertive">
+                <div class="scan-verdict" id="scanVerdict">Ready to scan</div>
+                <div class="scan-detail" id="scanDetail">Results appear here.</div>
+            </div>
+            <h2>Recent scans</h2>
+            <div class="scan-log" id="scanLog"><p class="co-hint">No scans yet.</p></div>
+        </section>
+    </div>
+</main>
+
+<!-- ============================== CHECKOUT VIEW ============================== -->
+<main id="viewCheckout" class="view hidden">
+    <button id="checkoutBack" class="back-btn">← Back to seats</button>
+    <div class="checkout-head">
+        <h1>Checkout</h1>
+        <div class="hold-timer co-timer">
+            <span>Seats held for</span>
+            <span id="coCountdown" class="countdown">5:00</span>
+        </div>
+    </div>
+
+    <div class="checkout-layout">
+        <!-- 1. Payment summary -->
+        <section class="co-card">
+            <h2>Payment summary</h2>
+            <div class="co-event">
+                <div class="co-event-title" id="coEventTitle">Event</div>
+                <div class="co-event-meta" id="coEventMeta"></div>
+            </div>
+            <div class="co-lines" id="coLines"></div>
+            <div class="summary-totals co-totals">
+                <div class="row"><span>Tickets (<span id="coQty">0</span>)</span><span id="coSubtotal">—</span></div>
+                <div class="row muted"><span>Convenience fee</span><span id="coFee">—</span></div>
+                <div class="row total"><span>Total amount</span><span id="coTotal">—</span></div>
+            </div>
+            <div class="co-ref"><span>Booking reference</span><strong id="coRef">—</strong></div>
+        </section>
+
+        <!-- 2. Payment -->
+        <section class="co-card">
+            <h2>Payment</h2>
+            <div id="coProviderRazorpay" class="hidden">
+                <div class="co-methods" aria-label="Accepted payment methods">
+                    <span>UPI</span><span>Cards</span><span>Netbanking</span><span>Wallets</span>
+                </div>
+                <p class="co-hint">You'll pay in Razorpay's secure window. SeatVault never sees your card or UPI details.</p>
+            </div>
+            <div id="coProviderSimulated" class="hidden">
+                <div class="test-banner">🧪 Test mode: no real money moves</div>
+                <div class="co-methods" id="coSimMethods" role="radiogroup" aria-label="Payment method">
+                    <button type="button" class="chip" role="radio" aria-checked="true" data-method="CARD">💳 Card</button>
+                    <button type="button" class="chip" role="radio" aria-checked="false" data-method="UPI">📱 UPI</button>
+                    <button type="button" class="chip" role="radio" aria-checked="false" data-method="NETBANKING">🏦 Netbanking</button>
+                </div>
+                <p class="co-hint">Choose how the test payment should end:</p>
+                <div class="pay-methods">
+                    <label class="pay-method selected">
+                        <input type="radio" name="simOutcome" value="SUCCESS" checked/>
+                        <span class="pm-body"><span class="pm-title">✅ Payment succeeds</span><span class="pm-sub">The bank approves it and your seats are booked</span></span>
+                    </label>
+                    <label class="pay-method">
+                        <input type="radio" name="simOutcome" value="FAILURE"/>
+                        <span class="pm-body"><span class="pm-title">❌ Payment is declined</span><span class="pm-sub">Your seats stay held so you can try again</span></span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="coStatus" class="co-status hidden" role="status" aria-live="polite"></div>
+
+            <label class="check co-terms"><input type="checkbox" id="coTerms"/>
+                <span>I accept the <a href="TermsOfService.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="PrivacyPolicy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span>
+            </label>
+            <button id="coPayBtn" class="btn btn-primary btn-block" disabled>Pay</button>
+            <button id="coReleaseBtn" class="btn btn-ghost btn-block">Cancel booking &amp; release seats</button>
+            <p class="pay-note">🔒 Safe to retry: a payment is only ever confirmed once, and money that arrives after your hold ends is refunded automatically.</p>
+        </section>
+
+        <!-- 3. Ticket preview -->
+        <section class="co-card">
+            <h2>Your ticket</h2>
+            <div class="pass" id="coPass">
+                <div class="pass-head" id="coPassHead">
+                    <span class="pass-cat" id="coPassCat">EVENT</span>
+                    <span class="pass-emoji" id="coPassEmoji" aria-hidden="true">🎉</span>
+                </div>
+                <div class="pass-body">
+                    <div class="pass-title" id="coPassTitle">Event</div>
+                    <div class="pass-grid">
+                        <div><span>Date</span><strong id="coPassDate">—</strong></div>
+                        <div><span>Time</span><strong id="coPassTime">—</strong></div>
+                        <div><span>Venue</span><strong id="coPassVenue">—</strong></div>
+                        <div><span>Seats</span><strong id="coPassSeats">—</strong></div>
+                    </div>
+                </div>
+                <div class="ticket-perf"></div>
+                <div class="pass-foot">
+                    <span class="pass-ref" id="coPassRef">—</span>
+                    <span class="pass-state" id="coPassState">Awaiting payment</span>
+                </div>
+            </div>
+            <p class="co-hint">Your QR e-ticket (PDF) is issued as soon as the payment is confirmed.</p>
+        </section>
     </div>
 </main>
 
@@ -169,46 +344,6 @@
     </div>
 </div>
 
-<!-- ============================== CHECKOUT / PAYMENT MODAL ============================== -->
-<div id="payModal" class="modal-backdrop hidden">
-    <div class="modal pay-modal">
-        <button class="modal-close" data-close="payModal" id="payClose">✕</button>
-        <h3>Complete payment</h3>
-        <div class="hold-timer">
-            <span>Seats held — pay within</span>
-            <span id="payCountdown" class="countdown">5:00</span>
-        </div>
-
-        <div class="pay-order">
-            <div id="payEventLine" class="pay-event">Event</div>
-            <div id="paySeats" class="pay-seats"></div>
-            <div class="pay-total-row"><span>Amount payable</span><span id="payTotal" class="pay-amount">₹0</span></div>
-        </div>
-
-        <div class="pay-methods">
-            <label class="pay-method selected">
-                <input type="radio" name="pm" value="CARD" checked/>
-                <span class="pm-body"><span class="pm-title">💳 Card / UPI</span><span class="pm-sub">Approves instantly</span></span>
-            </label>
-            <label class="pay-method">
-                <input type="radio" name="pm" value="FAIL_CARD"/>
-                <span class="pm-body"><span class="pm-title">🚫 Declined card</span><span class="pm-sub">Demo: payment fails, seats stay held</span></span>
-            </label>
-            <label class="pay-method">
-                <input type="radio" name="pm" value="TIMEOUT_CARD"/>
-                <span class="pm-body"><span class="pm-title">⏳ Slow gateway</span><span class="pm-sub">Demo: provider times out</span></span>
-            </label>
-        </div>
-
-        <p class="pay-note">🔒 Safe to retry — if your connection drops, paying again won't charge you twice.</p>
-
-        <div class="pay-actions">
-            <button id="cancelHoldBtn" class="btn btn-ghost">Cancel &amp; release</button>
-            <button id="payNowBtn" class="btn btn-primary">Pay <span id="payNowAmount"></span></button>
-        </div>
-    </div>
-</div>
-
 <!-- ============================== CONFIRMATION MODAL ============================== -->
 <div id="confirmModal" class="modal-backdrop hidden">
     <div class="modal ticket-modal">
@@ -222,12 +357,14 @@
             <div class="ticket-body">
                 <div class="ticket-row"><span>Event</span><strong id="tkEvent">—</strong></div>
                 <div class="ticket-row"><span>Seats</span><strong id="tkSeats">—</strong></div>
-                <div class="ticket-row"><span>Booking ID</span><strong id="tkId">—</strong></div>
+                <div class="ticket-row"><span>Booking reference</span><strong id="tkRef">—</strong></div>
                 <div class="ticket-row"><span>Amount paid</span><strong id="tkAmount">—</strong></div>
                 <div class="ticket-row"><span>Payment</span><strong id="tkPayStatus">—</strong></div>
-                <div class="ticket-qr" id="tkQr"></div>
             </div>
-            <button class="btn btn-primary btn-block" data-close="confirmModal" id="confirmDone">Done</button>
+            <div class="ticket-actions">
+                <button class="btn btn-soft btn-block" id="tkDownload">⬇ Download e-ticket (PDF)</button>
+                <button class="btn btn-primary btn-block" data-close="confirmModal" id="confirmDone">Done</button>
+            </div>
         </div>
     </div>
 </div>
@@ -244,9 +381,13 @@
             <label class="field"><span>Date &amp; time</span><input name="eventDateTime" type="datetime-local" required/></label>
             <label class="field"><span>Category</span>
                 <select name="category">
-                    <option>Concert</option><option>Sports</option><option>Theatre</option><option>Comedy</option><option>Conference</option>
+                    <option value="CONCERT">Concert</option><option value="SPORTS">Sports</option>
+                    <option value="CONFERENCE">Conference</option><option value="MOVIE">Movie</option>
+                    <option value="THEATRE">Theatre</option><option value="COMEDY">Comedy</option>
+                    <option value="OTHER">Other</option>
                 </select>
             </label>
+            <label class="field"><span>City</span><input name="city" maxlength="100" placeholder="Bengaluru"/></label>
             <label class="field"><span>Seating</span>
                 <select name="mode" id="createMode"><option value="grid">Grid (rows × seats)</option><option value="flat">Flat capacity</option></select>
             </label>
@@ -261,6 +402,21 @@
             <label class="field" id="premPriceF"><span>Premium price / seat</span><input name="premiumPrice" type="number" min="0" step="0.01" placeholder="e.g. 1200"/></label>
             <button class="btn btn-primary btn-block span2" type="submit">Create event</button>
         </form>
+    </div>
+</div>
+
+<!-- ============================== TICKET PASS MODAL ============================== -->
+<div id="passModal" class="modal-backdrop hidden">
+    <div class="modal pass-modal">
+        <button class="modal-close" data-close="passModal">✕</button>
+        <div id="passCard" class="wallet"></div>
+        <div class="pass-nav">
+            <button id="passPrev" class="btn btn-soft btn-sm" aria-label="Previous ticket">←</button>
+            <span id="passCounter" class="muted">Ticket 1 of 1</span>
+            <button id="passNext" class="btn btn-soft btn-sm" aria-label="Next ticket">→</button>
+        </div>
+        <button id="passDownload" class="btn btn-soft btn-block">⬇ Download all as PDF</button>
+        <p class="co-hint" style="text-align:center">Turn up your screen brightness at the gate. Each QR admits one person, once.</p>
     </div>
 </div>
 
@@ -280,8 +436,9 @@
     <p>&copy; 2026 SeatVault &middot; Built by <a href="https://github.com/Abhishek360007" style="color: var(--primary); text-decoration: none;">Abhishek Raj</a> &middot; <a href="PrivacyPolicy.html" style="color: var(--primary); text-decoration: none;">Privacy Policy</a> &middot; <a href="TermsOfService.html" style="color: var(--primary); text-decoration: none;">Terms of Service</a></p>
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<!-- Served locally: the CSP only allows same-origin scripts. Verified against cdnjs SRI hashes. -->
+<script src="vendor/sockjs-1.6.1.min.js"></script>
+<script src="vendor/stomp-2.3.3.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -12,16 +12,18 @@ SeatVault is a high-performance, concurrency-safe, enterprise event ticketing pl
 ## 🚀 Project Status
 
 > [!NOTE]
-> **Status: Production-hardened core, one integration deliberately deferred**
+> **Status: Production-hardened core, Razorpay checkout ready to switch on**
 >
-> The booking/concurrency core, security controls, waiting room, e-tickets, and CI
-> quality gates below are implemented and covered by tests. The payment gateway is
-> still a **simulated** provider (`SimulatedPaymentGateway`) — wiring a real
-> Stripe/Razorpay integration behind `PaymentWebhookController` is a tracked,
-> explicit `TODO(decision)` pending a provider choice, not a hidden gap.
+> The booking/concurrency core, security controls, waiting room, checkout, e-tickets
+> and CI quality gates below are implemented and covered by tests. Payments run on a
+> **simulated** provider by default, which signs its results exactly as Razorpay does,
+> so the real verification path runs locally with no account. Set
+> `PAYMENT_PROVIDER=razorpay` with test keys to use Razorpay (see [Payments](#-payments)).
 
 - **Concurrency & Locking**: Pessimistic/Optimistic row locking with 0% overselling guarantee under extreme concurrent traffic.
 - **High-Demand Virtual Waiting Room**: Redis Sorted Set FIFO queue with periodic admission batching and short-lived, re-checked (not consumed) admission tokens.
+- **Checkout & Payments**: Razorpay order-based checkout (UPI, cards, netbanking) with signed callback verification, signed webhooks and a reconciliation sweep, all finishing through one idempotent path; late payments are refunded automatically. Human-readable booking references (`SV-7KX4-92QD`).
+- **Email Notifications**: booking confirmation (PDF tickets attached), payment receipt, cancellation, refund and a 24-hour event reminder, through a transactional outbox with SKIP LOCKED dispatch and exponential-backoff retries. Mailpit catches them locally.
 - **E-Ticket & Gate Check-in**: OpenPDF document rendering, ZXing QR code generation, and HMAC-SHA256 digital signature verification for gate check-in scanners. Generated on demand at download time (not eagerly at payment confirmation).
 - **JWT Security & Token Revocation**: 15-min access tokens, 7-day Redis refresh tokens, token revocation blocklist, and a startup guard that halts boot in `prod` if secrets are left at dev defaults.
 - **Rate Limiting & Safety**: IP-based rate limiting on registration, login, event browsing, and waiting-room join; per-user rate limiting on seat holds; hard page-size capping on all pageable queries; a trusted-proxy allowlist so `X-Forwarded-For` can't be spoofed to dodge it.
@@ -137,10 +139,73 @@ SeatVault is a high-performance, concurrency-safe, enterprise event ticketing pl
 | Method | Endpoint | Access | Description |
 | --- | --- | --- | --- |
 | `POST` | `/api/v1/bookings/hold` | Authenticated (rate limited) | Hold seats (requires `admissionToken` if the event is high-demand) |
-| `POST` | `/api/v1/bookings/{id}/pay` | Authenticated | Idempotent payment approval & confirmation (simulated gateway) |
+| `POST` | `/api/v1/bookings/{id}/checkout` | Authenticated | Open (or reuse) the provider order for a pending booking |
+| `POST` | `/api/v1/bookings/{id}/payments/verify` | Authenticated | Verify the provider's signed success callback and confirm (idempotent) |
+| `POST` | `/api/v1/bookings/{id}/payments/failure` | Authenticated | Record a failed attempt reported by the widget (display only) |
+| `POST` | `/api/v1/payments/webhook/razorpay` | Public, HMAC-signed | Provider webhook (`payment.captured`, `payment.failed`, `order.paid`) |
+| `POST` | `/api/v1/payments/simulated/checkout` | Authenticated, simulated mode only | Stand-in for the provider widget in test mode |
+| `POST` | `/api/v1/bookings/{id}/pay` | Authenticated | Direct server-side charge (simulated provider only; idempotent by key) |
 | `POST` | `/api/v1/bookings/{id}/cancel` | Authenticated | Cancel a pending booking, release its held seats |
 | `GET` | `/api/v1/bookings/{id}/ticket` | Owner/Admin | Download the PDF e-ticket (confirmed bookings only) |
-| `POST` | `/api/v1/tickets/verify` | Admin/Scanner | Verify a scanned QR token and record gate check-in |
+| `GET` | `/api/v1/bookings/{id}/passes` | Owner/Admin | On-screen tickets: one signed QR per seat, with check-in status |
+| `POST` | `/api/v1/tickets/verify` | Admin/Scanner | Verify a scanned QR token for this gate's `eventId` and record the check-in |
+| `GET` | `/api/v1/tickets/summary?eventId=` | Admin/Scanner | Tickets sold vs. admitted, for the gate screen |
+
+## 💳 Payments
+
+Booking states: `PENDING → CONFIRMED | EXPIRED | CANCELLED` (enforced in `Booking`; terminal states are final).
+
+1. **Hold** seats → a `PENDING` booking with a frozen price and a booking reference.
+2. **Checkout** opens one provider order per booking (reused on retry), for the frozen amount.
+3. The customer pays in **Razorpay's own widget**; card/UPI details never reach SeatVault.
+4. The server **verifies the signed callback**, asks Razorpay for the payment's real state, and confirms.
+   The **webhook** and a **reconciliation sweep** deliver the same result if the tab is closed.
+   All three end in `CheckoutService.complete`, which confirms exactly once.
+5. If money arrives after the hold expired or the booking was cancelled, it is **refunded** in full
+   instead of confirming seats that may now belong to someone else.
+
+### Using Razorpay test mode
+
+1. Create a Razorpay account and switch the dashboard to **Test Mode**.
+2. Under *Account & Settings → API Keys*, generate a test key, and put it in your local `.env`
+   (never commit it):
+   ```bash
+   PAYMENT_PROVIDER=razorpay
+   RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
+   RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxxxxxx
+   RAZORPAY_WEBHOOK_SECRET=choose-a-long-random-string
+   ```
+3. Optional locally (required in `prod`): add a webhook in *Settings → Webhooks* pointing to
+   `https://<public-host>/api/v1/payments/webhook/razorpay` with events `payment.captured`,
+   `payment.failed` and `order.paid`, and the same secret. Locally, expose port 8080 with a
+   tunnel (e.g. `ngrok http 8080`); without it, payments are still confirmed from the browser
+   callback and the reconciliation sweep.
+4. Pay with Razorpay's [test cards / UPI IDs](https://razorpay.com/docs/payments/payments/test-card-details/).
+
+## 🎫 QR tickets & gate check-in
+
+- Each seat gets its own QR holding an **HMAC-SHA256-signed token** (`bookingId|seatId|eventId|issuedAt`).
+  Editing any part breaks the signature, so ticket IDs can't be forged or guessed.
+- Customers see wallet-style passes under **My tickets → Show tickets**, or download the PDF (one page per seat).
+- Staff with the `ADMIN` or `SCANNER` role open **📷 Scan tickets**, pick the event at their gate and scan
+  with the camera (native `BarcodeDetector`, or the bundled jsQR elsewhere) or paste a code.
+  The server checks the signature, **that the ticket is for this event**, that the booking is confirmed,
+  and records the check-in under a unique constraint, so each seat is admitted **once**, even with
+  simultaneous scans. A re-scan shows **ALREADY USED** with when and by whom.
+- Cameras need a secure context: `localhost` works; on a phone, serve the app over HTTPS.
+
+## ✉️ Email notifications
+
+Booking changes write an email row to the `notifications` outbox **in the same transaction**, so an email
+exists exactly when the change commits. A dispatcher claims due rows with `FOR UPDATE SKIP LOCKED`
+(safe across instances), sends them over SMTP outside any transaction, and retries failures after
+30s, 1m, 2m ... up to 1h, marking them `FAILED` after 8 attempts or on a permanent error.
+Emails are rendered from Thymeleaf templates in `src/main/resources/templates/email`.
+
+Locally, run `docker compose up -d mailpit` and open **http://localhost:8025** to read every email
+SeatVault sends; nothing leaves your machine. In production, point `MAIL_HOST`, `MAIL_PORT`,
+`MAIL_USERNAME`, `MAIL_PASSWORD` (with `MAIL_SMTP_AUTH=true`, `MAIL_STARTTLS=true`) at your provider's
+SMTP relay and set `MAIL_FROM` and `APP_PUBLIC_BASE_URL`.
 
 ### Observability
 | Method | Endpoint | Access | Description |

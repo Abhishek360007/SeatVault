@@ -62,6 +62,14 @@ public class Payment extends BaseEntity {
     @Column(name = "failure_reason", length = 255)
     private String failureReason;
 
+    /** Provider that owns {@link #providerOrderId} ({@code razorpay}, {@code simulated}); null for direct charges. */
+    @Column(length = 20)
+    private String provider;
+
+    /** The provider-side order the customer pays in the provider's widget; unique (V9). */
+    @Column(name = "provider_order_id", length = 64, unique = true)
+    private String providerOrderId;
+
     public Payment(Long bookingId, Long userId, String idempotencyKey, long amountMinor, String currency) {
         this.bookingId = bookingId;
         this.userId = userId;
@@ -81,6 +89,22 @@ public class Payment extends BaseEntity {
 
     public void decline(String reason) {
         this.status = PaymentStatus.DECLINED;
+        this.failureReason = reason;
+    }
+
+    /**
+     * A single attempt on an open order failed (card declined, UPI timed out...).
+     * The order stays INITIATED because the customer can retry on the same order;
+     * only the latest reason is kept, for display.
+     */
+    public void recordAttemptFailure(String reason) {
+        this.failureReason = reason;
+    }
+
+    /** Money was captured but the booking couldn't be confirmed, so it was returned. */
+    public void refund(String providerReference, String reason) {
+        this.status = PaymentStatus.REFUNDED;
+        this.providerReference = providerReference;
         this.failureReason = reason;
     }
 

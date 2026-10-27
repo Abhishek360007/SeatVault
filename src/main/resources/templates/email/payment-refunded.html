@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title th:text="${subject}">Refund issued</title></head>
+<body th:replace="~{email/fragments :: layout(${'We refunded ' + total + ' for ' + reference + '.'}, ~{::content})}">
+<th:block th:fragment="content">
+<th:block th:replace="~{email/fragments :: hero(${'We have refunded your payment'}, ${'Hi ' + name + ', ' + total + ' is on its way back to you.'})}"/>
+<th:block th:replace="~{email/fragments :: ticket}"/>
+<tr><td style="padding:12px 32px 0;font-size:14px;line-height:1.6">
+    Your payment arrived after your seat hold had ended, so we couldn't confirm these seats
+    (they may already belong to someone else). Rather than keep your money, we refunded it
+    <strong>in full</strong>. Refunds usually reach your account in 5 to 7 working days.
+</td></tr>
+<tr><td style="padding:8px 32px 0">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;color:#5a6079">
+        <tr><td style="padding:4px 0">Amount refunded</td><td style="padding:4px 0;text-align:right;color:#1a1d2b;font-weight:bold" th:text="${total}">₹0</td></tr>
+        <tr><td style="padding:4px 0">Refund ID</td><td style="padding:4px 0;text-align:right;color:#1a1d2b;font-family:monospace" th:text="${paymentId}">rfnd_x</td></tr>
+    </table>
+</td></tr>
+<th:block th:replace="~{email/fragments :: button(${'See the event'}, ${eventUrl})}"/>
+</th:block>
+</body>
+</html>

@@ -3,7 +3,26 @@ server:
 
 spring:
   application:
-    name: ticket-booking-platform
+    name: seatvault
+
+  # Outgoing email. Locally this points at Mailpit (docker compose up -d mailpit),
+  # which catches everything at http://localhost:8025. In production, use your
+  # provider's SMTP relay (SES, SendGrid, Postmark...) via these env vars.
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${MAIL_STARTTLS:false}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
+
+  thymeleaf:
+    # Templates are only used to render emails; the web UI is a static SPA.
+    check-template-location: false
 
   datasource:
     # All connection details come from env vars so the same jar runs locally,
@@ -79,8 +98,10 @@ app:
     max-seats-per-booking: ${BOOKING_MAX_SEATS:10}
     # Optional app-tier lock in front of the DB (bonus path). Off by default.
     redis-lock-enabled: ${BOOKING_REDIS_LOCK:false}
-    # Expired-hold release job (Phase 6).
-    release-interval-ms: ${RELEASE_INTERVAL_MS:30000}
+    # Expired-hold release job (Phase 6). Holds are also reclaimed on contact when
+    # someone tries to take a lapsed seat; this sweep frees the rest and pushes the
+    # change to open seat maps, so it runs often (the query hits idx_seats_hold_expiry).
+    release-interval-ms: ${RELEASE_INTERVAL_MS:5000}
     release-initial-delay-ms: ${RELEASE_INITIAL_DELAY_MS:15000}
     release-batch-size: ${RELEASE_BATCH_SIZE:200}
     rate-limit:
@@ -97,6 +118,34 @@ app:
     admission-interval-ms: ${WAITING_ROOM_INTERVAL_MS:10000}
     admission-initial-delay-ms: ${WAITING_ROOM_INITIAL_DELAY_MS:15000}
     admission-token-ttl-seconds: ${WAITING_ROOM_TOKEN_TTL_SECONDS:120}
+  payment:
+    # simulated (default: full checkout flow, no account needed) or razorpay.
+    provider: ${PAYMENT_PROVIDER:simulated}
+    merchant-name: ${PAYMENT_MERCHANT_NAME:SeatVault}
+    # Signs simulated checkout results and webhooks, as Razorpay does with its secrets.
+    simulated-secret: ${PAYMENT_SIMULATED_SECRET:dev-only-simulated-payment-secret-0123456789}
+    # Open orders older than this are checked with the provider by the reconciliation sweep.
+    reconcile-after-seconds: ${PAYMENT_RECONCILE_AFTER_SECONDS:120}
+    reconciliation-interval-ms: ${PAYMENT_RECONCILIATION_INTERVAL_MS:60000}
+    razorpay:
+      # Test mode: keys start with rzp_test_. Put them in .env, never in git.
+      key-id: ${RAZORPAY_KEY_ID:}
+      key-secret: ${RAZORPAY_KEY_SECRET:}
+      webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+  # Time zone dates are shown in on tickets and in emails (events are stored in UTC).
+  display-zone: ${APP_DISPLAY_ZONE:Asia/Kolkata}
+  # Absolute URL of the web app, for links in emails.
+  public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
+  notifications:
+    enabled: ${NOTIFICATIONS_ENABLED:true}
+    from: ${MAIL_FROM:SeatVault <tickets@seatvault.local>}
+    # Outbox dispatcher: how often it looks for due emails and how many it sends per run.
+    dispatch-interval-ms: ${NOTIFICATIONS_DISPATCH_INTERVAL_MS:5000}
+    batch-size: ${NOTIFICATIONS_BATCH_SIZE:20}
+    # Retries: 30s, 1m, 2m, 4m, 8m... capped at 1h, then FAILED after max-attempts.
+    max-attempts: ${NOTIFICATIONS_MAX_ATTEMPTS:8}
+    # Event reminders go out this many hours before the event starts.
+    reminder-hours-before: ${NOTIFICATIONS_REMINDER_HOURS:24}
   ticket:
     # HMAC-SHA256 key that signs e-ticket QR tokens. Override in every real environment.
     hmac-secret: ${TICKET_HMAC_SECRET:change-me-in-prod-this-is-a-dev-only-ticket-secret-0123456789}
@@ -130,3 +179,7 @@ resilience4j:
         failureRateThreshold: 50
         slowCallRateThreshold: 75
         slowCallDurationThreshold: 2000ms
+        # A declined card or a 409 is the customer's outcome, not the gateway failing,
+        # so it must neither count towards opening the circuit nor hit the fallback.
+        ignoreExceptions:
+          - com.seatvault.exception.ApiException

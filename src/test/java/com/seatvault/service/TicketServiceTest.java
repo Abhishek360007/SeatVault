@@ -1,5 +1,6 @@
 package com.seatvault.service;
 
+import com.seatvault.config.DisplayFormat;
 import com.seatvault.config.TicketProperties;
 import com.seatvault.domain.Booking;
 import com.seatvault.domain.Event;
@@ -12,6 +13,7 @@ import com.seatvault.exception.BadRequestException;
 import com.seatvault.exception.ResourceNotFoundException;
 import com.seatvault.repository.BookingRepository;
 import com.seatvault.repository.SeatRepository;
+import com.seatvault.repository.TicketCheckinRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,13 +36,15 @@ class TicketServiceTest {
     @Mock BookingRepository bookingRepository;
     @Mock SeatRepository seatRepository;
     @Mock TicketCheckinService ticketCheckinService;
+    @Mock TicketCheckinRepository ticketCheckinRepository;
 
     TicketService ticketService;
 
     @BeforeEach
     void setUp() {
         TicketProperties properties = new TicketProperties("a-unique-test-hmac-secret-0123456789");
-        ticketService = new TicketService(properties, bookingRepository, seatRepository, ticketCheckinService);
+        ticketService = new TicketService(properties, bookingRepository, seatRepository, ticketCheckinService,
+                ticketCheckinRepository, new DisplayFormat("Asia/Kolkata"));
     }
 
     // ----------------------------------------------------------------- signing
@@ -102,11 +106,12 @@ class TicketServiceTest {
     void verifyAndCheckInDelegatesToCheckinServiceOnFirstScan() {
         String token = ticketService.signToken(50L, 20L, 1L);
         TicketVerifyResponse expected =
-                new TicketVerifyResponse(true, 50L, 20L, "A1", "Concert", false, Instant.now());
+                new TicketVerifyResponse(true, 50L, 20L, "A1", "Concert", false, Instant.now(),
+                        "SV-TEST-0001", null, "Jane", "scanner@example.com");
         when(ticketCheckinService.attemptCheckIn(any(TicketPayload.class), org.mockito.ArgumentMatchers.eq("scanner@example.com")))
                 .thenReturn(expected);
 
-        TicketVerifyResponse response = ticketService.verifyAndCheckIn(token, "scanner@example.com");
+        TicketVerifyResponse response = ticketService.verifyAndCheckIn(token, 1L, "scanner@example.com");
 
         assertThat(response).isSameAs(expected);
     }
@@ -117,12 +122,23 @@ class TicketServiceTest {
         when(ticketCheckinService.attemptCheckIn(any(TicketPayload.class), any()))
                 .thenThrow(new DataIntegrityViolationException("uq_ticket_checkins_seat"));
         TicketVerifyResponse replay =
-                new TicketVerifyResponse(true, 50L, 20L, "A1", "Concert", true, Instant.now().minusSeconds(30));
+                new TicketVerifyResponse(true, 50L, 20L, "A1", "Concert", true, Instant.now().minusSeconds(30),
+                        "SV-TEST-0001", null, "Jane", "gate-1@example.com");
         when(ticketCheckinService.replayCheckIn(any(TicketPayload.class))).thenReturn(replay);
 
-        TicketVerifyResponse response = ticketService.verifyAndCheckIn(token, "scanner@example.com");
+        TicketVerifyResponse response = ticketService.verifyAndCheckIn(token, 1L, "scanner@example.com");
 
         assertThat(response).isSameAs(replay);
+    }
+
+    @Test
+    void verifyAndCheckInRefusesAGenuineTicketForAnotherEventWithoutCheckingIn() {
+        String token = ticketService.signToken(50L, 20L, 1L); // event 1
+
+        assertThatThrownBy(() -> ticketService.verifyAndCheckIn(token, 2L, "scanner@example.com"))
+                .isInstanceOf(com.seatvault.exception.ConflictException.class)
+                .hasMessageContaining("different event");
+        org.mockito.Mockito.verifyNoInteractions(ticketCheckinService);
     }
 
     // ----------------------------------------------------------------- download

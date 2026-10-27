@@ -2,10 +2,15 @@ package com.seatvault.controller;
 
 import com.seatvault.dto.PagedResponse;
 import com.seatvault.dto.booking.BookingResponse;
+import com.seatvault.dto.booking.CheckoutResponse;
 import com.seatvault.dto.booking.HoldRequest;
+import com.seatvault.dto.booking.PaymentFailureRequest;
 import com.seatvault.dto.booking.PaymentRequest;
+import com.seatvault.dto.booking.VerifyPaymentRequest;
+import com.seatvault.dto.ticket.TicketPass;
 import com.seatvault.security.AppUserPrincipal;
 import com.seatvault.service.BookingService;
+import com.seatvault.service.CheckoutService;
 import com.seatvault.service.TicketService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -37,10 +42,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class BookingController {
 
     private final BookingService bookingService;
+    private final CheckoutService checkoutService;
     private final TicketService ticketService;
 
-    public BookingController(BookingService bookingService, TicketService ticketService) {
+    public BookingController(BookingService bookingService, CheckoutService checkoutService,
+                             TicketService ticketService) {
         this.bookingService = bookingService;
+        this.checkoutService = checkoutService;
         this.ticketService = ticketService;
     }
 
@@ -52,8 +60,34 @@ public class BookingController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(summary = "Pay for a pending booking (simulated, idempotent). On success seats become BOOKED. "
-            + "Repeated calls with the same idempotencyKey return the first result instead of charging again.")
+    @Operation(summary = "Start checkout: open (or reuse) the provider order for a pending booking. "
+            + "The browser pays it in the provider's widget, then calls /payments/verify.")
+    @PostMapping("/{id}/checkout")
+    public ResponseEntity<CheckoutResponse> checkout(@AuthenticationPrincipal AppUserPrincipal principal,
+                                                     @PathVariable Long id) {
+        return ResponseEntity.ok(checkoutService.startCheckout(principal.getUser(), id));
+    }
+
+    @Operation(summary = "Confirm a checkout from the provider's signed success callback (idempotent). "
+            + "Verifies the signature, checks the payment with the provider, then books the seats.")
+    @PostMapping("/{id}/payments/verify")
+    public ResponseEntity<BookingResponse> verifyPayment(@AuthenticationPrincipal AppUserPrincipal principal,
+                                                         @PathVariable Long id,
+                                                         @Valid @RequestBody VerifyPaymentRequest request) {
+        return ResponseEntity.ok(checkoutService.verify(principal.getUser(), id, request));
+    }
+
+    @Operation(summary = "Record a failed payment attempt reported by the provider's widget (display only)")
+    @PostMapping("/{id}/payments/failure")
+    public ResponseEntity<Void> paymentFailure(@AuthenticationPrincipal AppUserPrincipal principal,
+                                               @PathVariable Long id,
+                                               @Valid @RequestBody PaymentFailureRequest request) {
+        checkoutService.recordClientFailure(principal.getUser(), id, request.orderId(), request.reason());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Pay directly, server-side (simulated provider only; idempotent). On success seats become "
+            + "BOOKED. Repeated calls with the same idempotencyKey return the first result instead of charging again.")
     @PostMapping("/{id}/pay")
     public ResponseEntity<BookingResponse> pay(@AuthenticationPrincipal AppUserPrincipal principal,
                                                @PathVariable Long id,
@@ -77,6 +111,13 @@ public class BookingController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"ticket-" + id + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdf);
+    }
+
+    @Operation(summary = "My on-screen tickets for a confirmed booking: one QR pass per seat (owner or admin)")
+    @GetMapping("/{id}/passes")
+    public ResponseEntity<java.util.List<TicketPass>> passes(@AuthenticationPrincipal AppUserPrincipal principal,
+                                                             @PathVariable Long id) {
+        return ResponseEntity.ok(ticketService.passesForBooking(principal.getUser(), id));
     }
 
     @Operation(summary = "Get one of my bookings")

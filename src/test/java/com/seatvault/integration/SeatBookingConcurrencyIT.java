@@ -52,6 +52,7 @@ class SeatBookingConcurrencyIT extends AbstractIntegrationTest {
 
     @BeforeEach
     void cleanSlate() {
+        deleteBookingDependents();
         bookingRepository.deleteAll();
         seatRepository.deleteAll();
         eventRepository.deleteAll();

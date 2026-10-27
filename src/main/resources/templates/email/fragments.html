@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<!-- Shared pieces of SeatVault emails. Not rendered on its own. -->
+
+<!-- Page shell: preheader + centred 600px card around the page's rows + footer.
+     Emails need tables and inline styles; most clients ignore <style> and modern CSS. -->
+<body th:fragment="layout(preheader, content)" style="margin:0;padding:0">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0" th:text="${preheader}">Preheader</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef0f5;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;color:#1a1d2b">
+<tr><td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden">
+    <th:block th:replace="${content}"/>
+    <tr><td style="padding:24px 32px;font-size:12px;color:#838aa1;text-align:center;border-top:1px solid #e1e4ec">
+        You're receiving this because you booked on <a th:href="${baseUrl}" style="color:#5a6079">SeatVault</a>.<br/>
+        Need help? Reply with your booking reference <strong th:text="${reference}">SV-XXXX-XXXX</strong>.
+    </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+
+<!-- Brand bar + headline + booking reference -->
+<th:block th:fragment="hero(headline, sub)">
+<tr><td style="background:#1d4ed8;background-image:linear-gradient(135deg,#1d4ed8,#0e7490);padding:28px 32px;text-align:center;color:#ffffff">
+    <div style="font-size:20px;font-weight:bold;letter-spacing:.5px">🎟️ Seat<span style="color:#bfdbfe">Vault</span></div>
+    <div style="font-size:24px;font-weight:bold;margin-top:18px;line-height:1.3" th:text="${headline}">Headline</div>
+    <div style="font-size:14px;margin-top:8px;opacity:.9" th:if="${sub}" th:text="${sub}">Sub</div>
+    <div style="display:inline-block;margin-top:16px;background:rgba(255,255,255,.18);border-radius:999px;padding:6px 14px;font-size:13px">
+        Booking reference: <strong style="letter-spacing:1px" th:text="${reference}">SV-XXXX-XXXX</strong>
+    </div>
+</td></tr>
+</th:block>
+
+<!-- The ticket card: event, when, where, seats -->
+<th:block th:fragment="ticket">
+<tr><td style="padding:24px 32px 8px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:2px dashed #cbd0dc;border-radius:14px;background:#f6f7fa">
+<tr><td style="padding:18px 20px">
+    <div style="font-size:18px;font-weight:bold" th:text="${eventTitle}">Event</div>
+    <div style="font-size:13px;color:#5a6079;margin-top:6px" th:text="${venue}">Venue</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;font-size:13px">
+        <tr>
+            <td style="color:#5a6079;padding-bottom:2px">Date</td>
+            <td style="color:#5a6079;padding-bottom:2px">Time</td>
+            <td style="color:#5a6079;padding-bottom:2px">Seats</td>
+        </tr>
+        <tr>
+            <td style="font-weight:bold" th:text="${date}">Date</td>
+            <td style="font-weight:bold" th:text="${time}">Time</td>
+            <td style="font-weight:bold" th:text="${seatLabels}">A1</td>
+        </tr>
+    </table>
+</td></tr>
+</table>
+</td></tr>
+</th:block>
+
+<!-- Order summary: per-seat lines, fee, total -->
+<th:block th:fragment="summary(title)">
+<tr><td style="padding:16px 32px 8px">
+    <div style="font-size:12px;font-weight:bold;letter-spacing:1px;color:#5a6079;text-transform:uppercase;margin-bottom:8px" th:text="${title}">Order summary</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;border-top:1px solid #e1e4ec">
+        <tr th:each="line : ${lines}">
+            <td style="padding:8px 0">Seat <span th:text="${line.label}">A1</span>
+                <span style="color:#5a6079;font-size:12px" th:if="${line.tier != ''}" th:text="'· ' + ${line.tier}">tier</span></td>
+            <td style="padding:8px 0;text-align:right" th:text="${line.price}">₹0</td>
+        </tr>
+        <tr><td style="padding:8px 0;border-top:1px solid #e1e4ec;color:#5a6079">Convenience fee</td>
+            <td style="padding:8px 0;border-top:1px solid #e1e4ec;text-align:right;color:#5a6079" th:text="${fee}">₹0</td></tr>
+        <tr><td style="padding:10px 0;border-top:2px solid #1a1d2b;font-weight:bold;font-size:16px">Total</td>
+            <td style="padding:10px 0;border-top:2px solid #1a1d2b;text-align:right;font-weight:bold;font-size:16px" th:text="${total}">₹0</td></tr>
+    </table>
+</td></tr>
+</th:block>
+
+<!-- Call-to-action button -->
+<th:block th:fragment="button(label, href)">
+<tr><td style="padding:16px 32px 8px" align="center">
+    <a th:href="${href}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:999px;font-size:14px" th:text="${label}">Open</a>
+</td></tr>
+</th:block>
+
+</html>

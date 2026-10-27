@@ -38,6 +38,14 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
      */
     List<Booking> findByStatusAndExpiresAtBefore(BookingStatus status, Instant cutoff);
 
+    /** Confirmed bookings whose event starts in {@code [from, to)}, for event reminders. */
+    @Query("""
+            SELECT b FROM Booking b JOIN FETCH b.event e JOIN FETCH b.user
+            WHERE b.status = com.seatvault.domain.BookingStatus.CONFIRMED
+              AND e.eventDateTime >= :from AND e.eventDateTime < :to
+            """)
+    List<Booking> findConfirmedForEventsStartingBetween(@Param("from") Instant from, @Param("to") Instant to);
+
     /**
      * PENDING bookings, among the given ids, whose hold has lapsed — used by the
      * release job to flip the parent bookings to EXPIRED after their seats are freed.

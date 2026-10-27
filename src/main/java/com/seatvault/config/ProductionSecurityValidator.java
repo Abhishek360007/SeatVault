@@ -1,6 +1,7 @@
 package com.seatvault.config;
 
 import jakarta.annotation.PostConstruct;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -18,10 +19,13 @@ public class ProductionSecurityValidator {
     private final JwtProperties jwtProperties;
     private final TicketProperties ticketProperties;
     private final String adminPassword;
+    private final PaymentProperties paymentProperties;
 
     public ProductionSecurityValidator(JwtProperties jwtProperties,
                                         TicketProperties ticketProperties,
-                                        @Value("${app.admin.password}") String adminPassword) {
+                                        @Value("${app.admin.password}") String adminPassword,
+                                        PaymentProperties paymentProperties) {
+        this.paymentProperties = paymentProperties;
         this.jwtProperties = jwtProperties;
         this.ticketProperties = ticketProperties;
         this.adminPassword = adminPassword;
@@ -38,6 +42,19 @@ public class ProductionSecurityValidator {
             throw new IllegalStateException(
                     "Refusing to start in 'prod' profile: TICKET_HMAC_SECRET is missing or still contains "
                             + "'change-me'. Set a unique, random secret via the TICKET_HMAC_SECRET env var.");
+        }
+        if (paymentProperties.isRazorpay()
+                && (paymentProperties.razorpay().webhookSecret() == null
+                    || paymentProperties.razorpay().webhookSecret().isBlank())) {
+            throw new IllegalStateException(
+                    "Refusing to start in 'prod' profile: RAZORPAY_WEBHOOK_SECRET is not set, so payments "
+                            + "would be confirmed only from the browser. Set it to the webhook secret from the "
+                            + "Razorpay dashboard.");
+        }
+        if (!paymentProperties.isRazorpay()) {
+            LoggerFactory.getLogger(ProductionSecurityValidator.class).warn(
+                    "'prod' profile is running with the SIMULATED payment provider: anyone can complete a "
+                            + "checkout without paying. Set PAYMENT_PROVIDER=razorpay with live keys before real sales.");
         }
         if ("admin12345".equals(adminPassword)) {
             throw new IllegalStateException(

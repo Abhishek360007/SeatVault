@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title th:text="${subject}">Booking cancelled</title></head>
+<body th:replace="~{email/fragments :: layout(${'Your booking ' + reference + ' was cancelled. You were not charged.'}, ~{::content})}">
+<th:block th:fragment="content">
+<th:block th:replace="~{email/fragments :: hero(${'Your booking was cancelled'}, ${'Hi ' + name + ', as requested, we released your seats.'})}"/>
+<th:block th:replace="~{email/fragments :: ticket}"/>
+<tr><td style="padding:12px 32px 0;font-size:14px;line-height:1.6">
+    You cancelled this booking before paying, so <strong>nothing was charged</strong>.
+    The seats are available to others again. If you still want to go, you can book again while seats last.
+</td></tr>
+<th:block th:replace="~{email/fragments :: button(${'Book again'}, ${eventUrl})}"/>
+</th:block>
+</body>
+</html>

@@ -67,6 +67,7 @@ public class BookingService {
     private final BookingProperties properties;
     private final EventRepository eventRepository;
     private final QueueService queueService;
+    private final CheckoutService checkoutService;
 
     public BookingService(SeatReservationService reservationService,
                           PaymentService paymentService,
@@ -77,7 +78,8 @@ public class BookingService {
                           RedisLockService redisLockService,
                           BookingProperties properties,
                           EventRepository eventRepository,
-                          QueueService queueService) {
+                          QueueService queueService,
+                          CheckoutService checkoutService) {
         this.reservationService = reservationService;
         this.paymentService = paymentService;
         this.bookingRepository = bookingRepository;
@@ -88,6 +90,7 @@ public class BookingService {
         this.properties = properties;
         this.eventRepository = eventRepository;
         this.queueService = queueService;
+        this.checkoutService = checkoutService;
     }
 
     // ============================ HOLD ============================
@@ -208,6 +211,9 @@ public class BookingService {
         try {
             result = paymentGateway.charge(new PaymentGateway.PaymentCommand(
                     bookingId, userId, request.paymentMethod(), claim.amountMinor(), claim.currency()));
+        } catch (UnsupportedOperationException notSupported) {
+            paymentService.markFailed(claim.paymentId(), bookingId, "Direct charge not supported by provider");
+            throw new com.seatvault.exception.BadRequestException(notSupported.getMessage());
         } catch (RuntimeException gatewayError) {
             log.warn("Payment gateway error for booking={}: {}", bookingId, gatewayError.toString());
             paymentService.markFailed(claim.paymentId(), bookingId, "Payment provider error");
@@ -226,15 +232,21 @@ public class BookingService {
                 log.info("Payment declined for booking={}: {}", bookingId, finalized.failureReason());
                 throw new PaymentFailedException(finalized.failureReason());
             }
-            case FAILED -> throw new ConflictException(finalized.failureReason());
+            case FAILED, REFUNDED -> throw new ConflictException(finalized.failureReason());
             case INITIATED -> throw new IllegalStateException("Payment not finalized for booking=" + bookingId);
         };
     }
 
     // ============================ CANCEL ============================
 
+    /**
+     * Cancels a pending booking and closes its open provider order, so a payment
+     * that lands afterwards is refunded instead of confirming released seats.
+     */
     public BookingResponse cancel(User user, Long bookingId) {
-        return reservationService.cancel(bookingId, user.getId());
+        BookingResponse cancelled = reservationService.cancel(bookingId, user.getId());
+        checkoutService.closeOpenOrder(bookingId, "Booking cancelled");
+        return cancelled;
     }
 
     // ============================ READS ============================
@@ -264,6 +276,11 @@ public class BookingService {
 
     /** Fallback method for payment service circuit breaker */
     public BookingResponse fallbackPay(User user, Long bookingId, PaymentRequest request, Throwable t) {
+        // Business outcomes (declined, already paid, bad request...) pass through unchanged;
+        // only real gateway trouble becomes "temporarily unavailable".
+        if (t instanceof com.seatvault.exception.ApiException business) {
+            throw business;
+        }
         log.error("Payment gateway circuit breaker tripped or request failed for bookingId={}", bookingId, t);
         throw new com.seatvault.exception.PaymentFailedException(
                 "Payment gateway is temporarily unavailable. Please try again later.");

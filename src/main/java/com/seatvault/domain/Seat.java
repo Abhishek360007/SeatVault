@@ -132,4 +132,9 @@ public class Seat extends BaseEntity {
     public boolean isAvailable() {
         return status == SeatStatus.AVAILABLE;
     }
+
+    /** A HELD seat whose hold has lapsed: still marked HELD, but free to be taken. */
+    public boolean isHoldExpired(Instant now) {
+        return status == SeatStatus.HELD && holdExpiresAt != null && holdExpiresAt.isBefore(now);
+    }
 }

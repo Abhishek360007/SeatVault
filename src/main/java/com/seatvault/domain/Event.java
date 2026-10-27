@@ -3,6 +3,8 @@ package com.seatvault.domain;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -47,6 +49,15 @@ public class Event extends BaseEntity {
 
     @Column(nullable = false)
     private String venue;
+
+    /** Browse category; OTHER when the creator doesn't pick one. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private EventCategory category = EventCategory.OTHER;
+
+    /** City the venue is in, for location filtering. Optional. */
+    @Column(length = 100)
+    private String city;
 
     @Column(name = "event_datetime", nullable = false)
     private Instant eventDateTime;

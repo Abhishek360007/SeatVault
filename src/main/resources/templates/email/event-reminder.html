@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title th:text="${subject}">Event reminder</title></head>
+<body th:replace="~{email/fragments :: layout(${eventTitle + ' is on ' + date + ' at ' + time + '. Your tickets are attached.'}, ~{::content})}">
+<th:block th:fragment="content">
+<th:block th:replace="~{email/fragments :: hero(${'See you soon at ' + eventTitle + '!'}, ${'Hi ' + name + ', your event is coming up.'})}"/>
+<th:block th:replace="~{email/fragments :: ticket}"/>
+<tr><td style="padding:12px 32px 0;font-size:14px;line-height:1.6">
+    <strong>Before you go:</strong>
+    <ul style="margin:8px 0 0;padding-left:20px">
+        <li>Your tickets are attached again: one QR per seat.</li>
+        <li>Each QR admits one person, once. Don't share it publicly.</li>
+        <li>Arrive a little early to get through the gate smoothly.</li>
+    </ul>
+</td></tr>
+<th:block th:replace="~{email/fragments :: button(${'Show my tickets'}, ${ticketsUrl})}"/>
+</th:block>
+</body>
+</html>

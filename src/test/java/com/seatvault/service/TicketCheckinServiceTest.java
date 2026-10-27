@@ -12,6 +12,7 @@ import com.seatvault.dto.ticket.TicketVerifyResponse;
 import com.seatvault.exception.ConflictException;
 import com.seatvault.exception.ResourceNotFoundException;
 import com.seatvault.repository.BookingRepository;
+import com.seatvault.repository.EventRepository;
 import com.seatvault.repository.SeatRepository;
 import com.seatvault.repository.TicketCheckinRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,12 +36,14 @@ class TicketCheckinServiceTest {
     @Mock BookingRepository bookingRepository;
     @Mock SeatRepository seatRepository;
     @Mock TicketCheckinRepository ticketCheckinRepository;
+    @Mock EventRepository eventRepository;
 
     TicketCheckinService checkinService;
 
     @BeforeEach
     void setUp() {
-        checkinService = new TicketCheckinService(bookingRepository, seatRepository, ticketCheckinRepository);
+        checkinService = new TicketCheckinService(bookingRepository, seatRepository, ticketCheckinRepository,
+                eventRepository);
     }
 
     @Test

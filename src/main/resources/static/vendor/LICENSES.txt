@@ -1,0 +1,15 @@
+Third-party libraries bundled with SeatVault, served from /vendor so the
+Content-Security-Policy can stay same-origin. Each file was checked against
+its publisher's integrity hash before being added.
+
+sockjs-1.6.1.min.js  sockjs-client 1.6.1   MIT          https://github.com/sockjs/sockjs-client
+                     verified against the cdnjs SRI hash
+stomp-2.3.3.min.js   stomp-websocket 2.3.3 Apache-2.0   https://github.com/jmesnil/stomp-websocket
+                     verified against the cdnjs SRI hash
+jsqr-1.4.0.js        jsQR 1.4.0            Apache-2.0   https://github.com/cozmo/jsQR
+                     dist/jsQR.js from the npm tarball, whose sha512 matched the
+                     registry's dist.integrity:
+                     sha512-dxLob7q65Xg2DvstYkRpkYtmKm2sPJ9oFhrhmudT1dZvNFFTlroai3AWSpLey/w5vMcLBXRgOJsbXpdN9HzU/A==
+
+Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
+MIT License:        https://opensource.org/licenses/MIT

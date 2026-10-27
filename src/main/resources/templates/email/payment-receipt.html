@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title th:text="${subject}">Payment receipt</title></head>
+<body th:replace="~{email/fragments :: layout(${'Receipt for ' + total + ' · ' + reference}, ~{::content})}">
+<th:block th:fragment="content">
+<th:block th:replace="~{email/fragments :: hero(${'Payment receipt'}, ${'Thanks, ' + name + '. We received your payment of ' + total + '.'})}"/>
+<th:block th:replace="~{email/fragments :: summary(${'Receipt'})}"/>
+<tr><td style="padding:8px 32px 0">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;color:#5a6079">
+        <tr><td style="padding:4px 0">Paid on</td><td style="padding:4px 0;text-align:right;color:#1a1d2b" th:text="${paidAt}">date</td></tr>
+        <tr><td style="padding:4px 0">Paid with</td><td style="padding:4px 0;text-align:right;color:#1a1d2b" th:text="${paymentProvider}">Razorpay</td></tr>
+        <tr><td style="padding:4px 0">Payment ID</td><td style="padding:4px 0;text-align:right;color:#1a1d2b;font-family:monospace" th:text="${paymentId}">pay_x</td></tr>
+        <tr><td style="padding:4px 0">For</td><td style="padding:4px 0;text-align:right;color:#1a1d2b" th:text="${eventTitle + ' · ' + seatCount + ' seat(s)'}">event</td></tr>
+    </table>
+</td></tr>
+<th:block th:replace="~{email/fragments :: button(${'View my tickets'}, ${ticketsUrl})}"/>
+</th:block>
+</body>
+</html>

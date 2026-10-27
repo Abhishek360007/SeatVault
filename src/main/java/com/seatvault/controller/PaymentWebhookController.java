@@ -1,55 +1,41 @@
 package com.seatvault.controller;
 
-import com.seatvault.service.BookingService;
+import com.seatvault.service.CheckoutService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoint for receiving asynchronous webhook events from payment providers.
+ * Receives payment webhooks from the provider. Public (the provider can't log in),
+ * so every request must carry a valid HMAC-SHA256 signature over the exact raw
+ * body; anything else is rejected with 400. The body is taken as a String, not
+ * parsed JSON, because re-serializing would change the bytes that were signed.
+ *
+ * <p>Point the Razorpay dashboard webhook (events: {@code payment.captured},
+ * {@code payment.failed}, {@code order.paid}) at
+ * {@code https://<host>/api/v1/payments/webhook/razorpay}.
  */
 @RestController
 @RequestMapping("/api/v1/payments/webhook")
-@Tag(name = "Payment Webhooks", description = "Asynchronous payment status updates")
+@Tag(name = "Payment Webhooks", description = "Signed payment status updates from the provider")
 public class PaymentWebhookController {
 
-    private static final Logger log = LoggerFactory.getLogger(PaymentWebhookController.class);
-    private final BookingService bookingService;
+    private final CheckoutService checkoutService;
 
-    public PaymentWebhookController(BookingService bookingService) {
-        this.bookingService = bookingService;
+    public PaymentWebhookController(CheckoutService checkoutService) {
+        this.checkoutService = checkoutService;
     }
 
-    @Operation(summary = "Process Stripe payment webhooks asynchronously")
-    @PostMapping("/stripe")
-    public ResponseEntity<String> handleStripeWebhook(
-            @RequestBody String payload,
-            @RequestHeader(value = "Stripe-Signature", required = false) String sigHeader) {
-        
-        // TODO(decision): Select production payment provider (e.g. Stripe or Razorpay) and configure webhook endpoints.
-        // For production, authenticate payload signature:
-        // try {
-        //     Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
-        //     if ("payment_intent.succeeded".equals(event.getType())) {
-        //         PaymentIntent intent = (PaymentIntent) event.getDataObjectDeserializer().getObject().orElse(null);
-        //         if (intent != null) {
-        //             Long bookingId = Long.parseLong(intent.getMetadata().get("bookingId"));
-        //             bookingService.finalizeAsyncPayment(bookingId, intent.getId(), "APPROVED");
-        //         }
-        //     }
-        // } catch (SignatureVerificationException e) {
-        //     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid signature");
-        // }
-
-        log.info("Received Stripe webhook payload. Signature present: {}", sigHeader != null);
-        if (sigHeader == null || sigHeader.isBlank()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Missing signature");
-        }
-        
-        return ResponseEntity.ok("Received");
+    @Operation(summary = "Razorpay webhook (signature-verified, idempotent)")
+    @PostMapping("/razorpay")
+    public ResponseEntity<Void> razorpay(@RequestBody String rawBody,
+                                         @RequestHeader(value = "X-Razorpay-Signature", required = false) String signature) {
+        checkoutService.handleWebhook(rawBody, signature);
+        return ResponseEntity.ok().build();
     }
 }

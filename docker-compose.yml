@@ -38,6 +38,16 @@ services:
       timeout: 3s
       retries: 10
 
+  # Local mail catcher: the app sends real SMTP to it, nothing leaves your machine.
+  # Read every email SeatVault sends at http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    container_name: seatvault-mailpit
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # web inbox
+    restart: unless-stopped
+
   app:
     build:
       context: .
@@ -55,6 +65,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: change-me-in-prod-this-is-a-dev-only-secret-key-0123456789
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
     ports:
       - "8080:8080"
     restart: unless-stopped

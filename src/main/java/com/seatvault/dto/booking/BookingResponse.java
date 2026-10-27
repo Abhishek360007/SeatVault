@@ -20,6 +20,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record BookingResponse(
         Long id,
+        String reference,
         Long eventId,
         String eventTitle,
         BookingStatus status,
@@ -62,6 +63,7 @@ public record BookingResponse(
                 .toList();
         return new BookingResponse(
                 booking.getId(),
+                booking.getReference(),
                 booking.getEvent().getId(),
                 booking.getEvent().getTitle(),
                 booking.getStatus(),

@@ -18,5 +18,7 @@ public enum PaymentStatus {
     INITIATED,
     APPROVED,
     DECLINED,
-    FAILED
+    FAILED,
+    /** Money arrived after the booking could no longer be confirmed, and was returned. */
+    REFUNDED
 }

@@ -162,6 +162,8 @@ public class PaymentService {
                     "A previous payment attempt failed; retry with a new idempotency key");
             case INITIATED -> throw new ConflictException(
                     "A payment for this booking is already in progress");
+            case REFUNDED -> throw new ConflictException(
+                    existing.getFailureReason() != null ? existing.getFailureReason() : "Payment was refunded");
             default -> throw new IllegalStateException("Unknown payment status: " + existing.getStatus());
         }
     }

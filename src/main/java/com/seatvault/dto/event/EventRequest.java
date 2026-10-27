@@ -1,5 +1,6 @@
 package com.seatvault.dto.event;
 
+import com.seatvault.domain.EventCategory;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Future;
@@ -79,7 +80,15 @@ public record EventRequest(
         List<PriceTier> tiers,
 
         /** Route holds through the virtual waiting room (see {@code QueueService}). Defaults to false. */
-        Boolean highDemand
+        Boolean highDemand,
+
+        // ---- Discovery (optional) ----
+
+        /** Browse category. Defaults to OTHER. */
+        EventCategory category,
+
+        @Size(max = 100, message = "city must be at most 100 characters")
+        String city
 ) {
     /**
      * An optional price band applied to the front rows of a grid event.

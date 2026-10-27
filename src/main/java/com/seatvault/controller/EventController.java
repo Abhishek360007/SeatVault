@@ -1,5 +1,10 @@
 package com.seatvault.controller;
 
+import com.seatvault.domain.EventCategory;
+import com.seatvault.dto.event.EventSearchCriteria;
+import com.seatvault.dto.event.EventSort;
+import com.seatvault.exception.BadRequestException;
+import org.springframework.data.domain.Sort;
 import com.seatvault.domain.SeatStatus;
 import com.seatvault.dto.PagedResponse;
 import com.seatvault.dto.event.EventRequest;
@@ -79,17 +84,50 @@ public class EventController {
 
     // ---------------------------- Public reads ----------------------------
 
-    @Operation(summary = "Browse/search events (public, paginated)")
+    @Operation(summary = "Browse/search events with filters and sorting (public, paginated)")
     @GetMapping
     public ResponseEntity<PagedResponse<EventResponse>> search(
-            @Parameter(description = "Free-text match on title/description")
+            @Parameter(description = "Free-text match on title, description, venue or city")
             @RequestParam(required = false) String keyword,
+            @Parameter(description = "Filter by category")
+            @RequestParam(required = false) EventCategory category,
+            @Parameter(description = "Filter by city (case-insensitive exact match)")
+            @RequestParam(required = false) String city,
             @Parameter(description = "Filter by venue (partial match)")
             @RequestParam(required = false) String venue,
             @Parameter(description = "Only events at/after this instant (ISO-8601)")
             @RequestParam(required = false) Instant fromDate,
-            @PageableDefault(size = 20, sort = "eventDateTime") Pageable pageable) {
-        return ResponseEntity.ok(eventService.search(keyword, venue, fromDate, pageable));
+            @Parameter(description = "Only events at/before this instant (ISO-8601)")
+            @RequestParam(required = false) Instant toDate,
+            @Parameter(description = "Minimum base seat price, in minor units")
+            @RequestParam(required = false) Long minPrice,
+            @Parameter(description = "Maximum base seat price, in minor units")
+            @RequestParam(required = false) Long maxPrice,
+            @Parameter(description = "Only events that still have available seats")
+            @RequestParam(defaultValue = "false") boolean availableOnly,
+            @Parameter(description = "Sort key: DATE, PRICE or POPULARITY")
+            @RequestParam(defaultValue = "DATE") EventSort sortBy,
+            @Parameter(description = "Sort direction: ASC or DESC")
+            @RequestParam(defaultValue = "ASC") Sort.Direction direction,
+            @PageableDefault(size = 20) Pageable pageable) {
+        if ((minPrice != null && minPrice < 0) || (maxPrice != null && maxPrice < 0)) {
+            throw new BadRequestException("minPrice and maxPrice must be >= 0");
+        }
+        if (fromDate != null && toDate != null && toDate.isBefore(fromDate)) {
+            throw new BadRequestException("toDate must not be before fromDate");
+        }
+        if (minPrice != null && maxPrice != null && maxPrice < minPrice) {
+            throw new BadRequestException("maxPrice must not be less than minPrice");
+        }
+        EventSearchCriteria criteria = new EventSearchCriteria(keyword, category, city, venue,
+                fromDate, toDate, minPrice, maxPrice, availableOnly, sortBy, direction.isDescending());
+        return ResponseEntity.ok(eventService.search(criteria, pageable));
+    }
+
+    @Operation(summary = "Cities that have upcoming events, for the browse filter (public)")
+    @GetMapping("/cities")
+    public ResponseEntity<java.util.List<String>> cities() {
+        return ResponseEntity.ok(eventService.upcomingCities());
     }
 
     @Operation(summary = "Get a single event with live availability (public)")

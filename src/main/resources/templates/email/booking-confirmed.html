@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title th:text="${subject}">Booking confirmed</title></head>
+<body th:replace="~{email/fragments :: layout(${'Your tickets for ' + eventTitle + ' are attached.'}, ~{::content})}">
+<th:block th:fragment="content">
+<th:block th:replace="~{email/fragments :: hero(${'Yay! Your booking is confirmed 🎉'}, ${'Hi ' + name + ', your seats are locked in.'})}"/>
+<th:block th:replace="~{email/fragments :: ticket}"/>
+<tr><td style="padding:12px 32px 0;font-size:14px;line-height:1.6;color:#1a1d2b">
+    Your e-tickets are attached as a PDF: one page per seat, each with its own QR code.
+    Show it at the entrance on your phone or printed. Each QR admits one person, once.
+</td></tr>
+<th:block th:replace="~{email/fragments :: button(${'View my tickets'}, ${ticketsUrl})}"/>
+<th:block th:replace="~{email/fragments :: summary(${'Order summary'})}"/>
+</th:block>
+</body>
+</html>
