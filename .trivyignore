@@ -1,0 +1,15 @@
+# Vulnerabilities the Trivy image scan may ignore, each with the reason it does not
+# apply and an expiry date. After the date, the CI scan fails again until someone
+# re-checks the entry, so exceptions can't be silently forgotten.
+#
+# Both entries are Spring Framework 6.2 issues fixed only in 7.0.9 (Spring Boot 4) or
+# in commercial 6.2 releases; Spring Boot 3.5.16 ships the last public 6.2 (6.2.19).
+# Remove them when SeatVault moves to Spring Boot 4.
+
+# RCE via XsltView. SeatVault has no XsltView and no XSLT view rendering
+# (grep src for "Xslt" returns nothing); the UI is a static SPA served by Spring.
+CVE-2026-47884 exp:2027-01-31
+
+# Stream corruption with Server-Sent Events + view fragments. SeatVault uses no SSE
+# (no SseEmitter / text/event-stream); live seat updates go over STOMP WebSocket.
+CVE-2026-47890 exp:2027-01-31

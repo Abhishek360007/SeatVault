@@ -6,17 +6,13 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build, Verify and Scan
     runs-on: ubuntu-latest
-
-    services:
-      # Testcontainers will automatically spin up PostgreSQL and Redis,
-      # but we can declare Docker socket mapping as standard for Testcontainers.
-      docker:
-        image: docker:dind
-        options: --privileged
 
     steps:
       - name: Checkout Code
@@ -32,20 +28,29 @@ jobs:
       - name: Make Maven Wrapper Executable
         run: chmod +x mvnw
 
+      # Unit tests + integration tests. The ITs start their own Postgres, Redis and
+      # Mailpit with Testcontainers, using the Docker that every GitHub runner has.
       - name: Run Unit & Integration Tests (Maven Verify)
-        # Verify runs failsafe integration tests using Testcontainers
-        run: ./mvnw clean verify
+        run: ./mvnw -B clean verify
 
+      # Needs a free NVD API key as the NVD_API_KEY repository secret; without one the
+      # NVD download takes hours and is rate limited, so the step is skipped.
       - name: Run OWASP Dependency Check
-        run: ./mvnw org.owasp:dependency-check-maven:check
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        if: ${{ env.NVD_API_KEY != '' }}
+        run: ./mvnw -B org.owasp:dependency-check-maven:check
 
       - name: Build Docker Image
         run: docker build -t seatvault-app:${{ github.sha }} .
 
       - name: Scan Image with Trivy
-        uses: aquasecurity/trivy-action@0.24.0
+        # Pinned to the v0.36.0 commit: tags can be moved or deleted (0.24.0 was), a commit can't.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: seatvault-app:${{ github.sha }}
           severity: 'HIGH,CRITICAL'
           exit-code: '1'
           ignore-unfixed: true
+          # Reviewed exceptions with reasons and expiry dates; see the file.
+          trivyignores: .trivyignore

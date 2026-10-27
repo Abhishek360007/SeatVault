@@ -20,6 +20,9 @@ RUN mvn -B -q clean package -DskipTests
 FROM eclipse-temurin:17-jre-alpine AS runtime
 WORKDIR /app
 
+# Pick up Alpine security fixes released since the base image was built.
+RUN apk upgrade --no-cache
+
 # Run as a non-root user.
 RUN addgroup -S app && adduser -S app -G app
 USER app

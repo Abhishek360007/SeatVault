@@ -213,7 +213,8 @@ class NotificationIT extends AbstractIntegrationTest {
         jdbc.update("""
                 INSERT INTO notifications (type, booking_id, recipient, dedupe_key, status, attempts,
                                            next_attempt_at, created_at, updated_at)
-                VALUES ('BOOKING_CONFIRMED', ?, 'not an address', 'x', 'PENDING', 0, now(), now(), now())""",
+                VALUES ('BOOKING_CONFIRMED', ?, 'not an address', 'x', 'PENDING', 0,
+                        now() - interval '1 minute', now(), now())""", // DB clock may run ahead of the JVM's
                 bookingId);
 
         dispatcher.dispatchBatch(Instant.now());
