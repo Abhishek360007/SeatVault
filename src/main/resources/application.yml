@@ -1,5 +1,6 @@
 server:
-  port: ${SERVER_PORT:8080}
+  # SERVER_PORT, else PORT (set by Render, Heroku-style hosts), else 8080.
+  port: ${SERVER_PORT:${PORT:8080}}
 
 spring:
   application:
@@ -135,7 +136,8 @@ app:
   # Time zone dates are shown in on tickets and in emails (events are stored in UTC).
   display-zone: ${APP_DISPLAY_ZONE:Asia/Kolkata}
   # Absolute URL of the web app, for links in emails.
-  public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
+  # On Render, RENDER_EXTERNAL_URL (e.g. https://seatvault.onrender.com) is set automatically.
+  public-base-url: ${APP_PUBLIC_BASE_URL:${RENDER_EXTERNAL_URL:http://localhost:8080}}
   notifications:
     enabled: ${NOTIFICATIONS_ENABLED:true}
     from: ${MAIL_FROM:SeatVault <tickets@seatvault.local>}
@@ -161,6 +163,11 @@ management:
     web:
       exposure:
         include: health,info,metrics,prometheus
+  health:
+    mail:
+      # Email has its own outbox and retries; an SMTP outage must not mark the whole
+      # app DOWN (hosts restart unhealthy apps, which would take bookings offline).
+      enabled: false
 
 logging:
   level:

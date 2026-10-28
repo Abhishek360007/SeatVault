@@ -75,4 +75,16 @@ class ProductionSecurityValidatorTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("RAZORPAY_WEBHOOK_SECRET");
     }
+
+    @Test
+    void rejectsBlankOrShortAdminPassword() {
+        for (String weak : new String[]{"", "   ", "short-pass"}) {
+            ProductionSecurityValidator validator =
+                    new ProductionSecurityValidator(GOOD_JWT, GOOD_TICKET, weak, SIMULATED);
+
+            assertThatThrownBy(validator::validate)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("ADMIN_PASSWORD");
+        }
+    }
 }

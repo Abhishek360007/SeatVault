@@ -231,6 +231,39 @@ SMTP relay and set `MAIL_FROM` and `APP_PUBLIC_BASE_URL`.
 
 ---
 
+## ☁️ Deploy to Render
+
+[`render.yaml`](render.yaml) is a Render Blueprint: one file that creates the app, a PostgreSQL
+database and a Redis instance (all free tier, Singapore region) and wires them together.
+
+1. Sign in at [render.com](https://render.com) with GitHub.
+2. **New → Blueprint**, pick this repository, and click **Apply**.
+3. When asked for `ADMIN_PASSWORD`, enter a strong password (12+ characters). The admin login
+   is `admin@seatvault.local` with that password.
+4. Wait for the first deploy (the Docker build takes a few minutes). The app is then live at
+   `https://<service-name>.onrender.com`, with HTTPS, so the gate scanner's camera works on phones.
+
+Render generates `JWT_SECRET`, `TICKET_HMAC_SECRET` and `PAYMENT_SIMULATED_SECRET` itself, and
+every push to `main` redeploys automatically.
+
+**Free-tier limits:** the app sleeps after 15 minutes without visitors (the next visit takes about a
+minute to wake it), it has 512 MB of memory (the JVM is tuned for that in `render.yaml`), and the free
+database is **deleted 30 days after creation** unless you upgrade it (Render emails you before).
+
+**Turning on email:** create a free SMTP account, e.g. [Brevo](https://www.brevo.com) (300 emails/day),
+then in the Render dashboard → *seatvault* → *Environment* set:
+
+| Variable | Value |
+| --- | --- |
+| `NOTIFICATIONS_ENABLED` | `true` |
+| `MAIL_HOST` | `smtp-relay.brevo.com` |
+| `MAIL_PORT` | `587` |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | your Brevo SMTP login and key |
+| `MAIL_SMTP_AUTH` / `MAIL_STARTTLS` | `true` / `true` |
+| `MAIL_FROM` | `SeatVault <a sender address verified in Brevo>` |
+
+**Real payments:** add `PAYMENT_PROVIDER=razorpay` and the Razorpay variables from [Payments](#-payments).
+
 ## 🧪 Testing & Code Quality
 
 ### Running Unit Tests

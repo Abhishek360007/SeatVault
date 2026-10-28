@@ -5,7 +5,9 @@ spring:
 
   datasource:
     # Strictly require env injection in production
-    url: ${DB_URL}
+    # Either a full JDBC URL in DB_URL, or the parts (what Render's managed
+    # PostgreSQL provides): DB_HOST, DB_PORT, DB_NAME.
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
@@ -21,7 +23,8 @@ app:
     expiration-minutes: 15
     refresh-expiration-days: 7
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+    # The UI is served by the app itself, so its own public URL is the one origin needed.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:${RENDER_EXTERNAL_URL}}
   ticket:
     # Strictly require an injected secret in production, no default.
     hmac-secret: ${TICKET_HMAC_SECRET}

@@ -56,6 +56,11 @@ public class ProductionSecurityValidator {
                     "'prod' profile is running with the SIMULATED payment provider: anyone can complete a "
                             + "checkout without paying. Set PAYMENT_PROVIDER=razorpay with live keys before real sales.");
         }
+        if (adminPassword == null || adminPassword.isBlank() || adminPassword.length() < 12) {
+            throw new IllegalStateException(
+                    "Refusing to start in 'prod' profile: ADMIN_PASSWORD is missing or shorter than 12 "
+                            + "characters. Set a strong password via the ADMIN_PASSWORD env var.");
+        }
         if ("admin12345".equals(adminPassword)) {
             throw new IllegalStateException(
                     "Refusing to start in 'prod' profile: ADMIN_PASSWORD is left at the default "
