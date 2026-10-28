@@ -1,9 +1,9 @@
-# Render Blueprint: the app, PostgreSQL and Redis on Render's free tier.
-# Deploy: Render dashboard → New → Blueprint → pick this repo. See README "Deploy to Render".
+# Render Blueprint: the app and Redis on Render's free tier; PostgreSQL on Neon
+# (free, no expiry). Deploy: Render dashboard → New → Blueprint → pick this repo,
+# then fill in the Neon connection settings it asks for. See README "Deploy to Render".
 #
 # Free-tier limits: the web service sleeps after 15 min without traffic (the next
-# visit takes about a minute to wake), has 512 MB RAM, and the free database is
-# removed 30 days after creation unless upgraded.
+# visit takes a couple of minutes to wake) and has 512 MB RAM.
 
 services:
   - type: web
@@ -24,17 +24,21 @@ services:
           -XX:MaxMetaspaceSize=180m -XX:ReservedCodeCacheSize=64m
           -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError
 
-      # --- Database (Render managed PostgreSQL) ---
+      # --- Database: Neon PostgreSQL (direct connection, not the pooler) ---
+      # Neon dashboard → Connect: host is ep-....ap-southeast-1.aws.neon.tech,
+      # user neondb_owner. Values are entered in the Render dashboard, never in git.
       - key: DB_HOST
-        fromDatabase: { name: seatvault-db, property: host }
-      - key: DB_PORT
-        fromDatabase: { name: seatvault-db, property: port }
-      - key: DB_NAME
-        fromDatabase: { name: seatvault-db, property: database }
+        sync: false
       - key: DB_USERNAME
-        fromDatabase: { name: seatvault-db, property: user }
+        sync: false
       - key: DB_PASSWORD
-        fromDatabase: { name: seatvault-db, property: password }
+        sync: false
+      - key: DB_NAME
+        value: neondb
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_SSLMODE
+        value: require
       - key: DB_POOL_SIZE
         value: "5"
 
@@ -77,10 +81,3 @@ services:
     maxmemoryPolicy: noeviction
     # Empty allow list = reachable only from Render services in this account.
     ipAllowList: []
-
-databases:
-  - name: seatvault-db
-    plan: free
-    region: singapore
-    databaseName: seatvault
-    user: seatvault

@@ -5,9 +5,9 @@ spring:
 
   datasource:
     # Strictly require env injection in production
-    # Either a full JDBC URL in DB_URL, or the parts (what Render's managed
-    # PostgreSQL provides): DB_HOST, DB_PORT, DB_NAME.
-    url: ${DB_URL:jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}}
+    # Either a full JDBC URL in DB_URL, or the parts: DB_HOST, DB_PORT, DB_NAME
+    # and DB_SSLMODE (managed hosts such as Neon require "require").
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}?sslmode=${DB_SSLMODE:prefer}}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 

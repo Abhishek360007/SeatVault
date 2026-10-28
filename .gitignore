@@ -23,6 +23,8 @@ Thumbs.db
 
 # Local env / secrets
 .env
+.env.*
+!.env.example
 
 # Spring Boot
 *.original
