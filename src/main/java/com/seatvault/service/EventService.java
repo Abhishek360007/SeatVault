@@ -94,6 +94,7 @@ public class EventService {
         event.setHighDemand(Boolean.TRUE.equals(request.highDemand()));
         event.setCategory(request.category() != null ? request.category() : EventCategory.OTHER);
         event.setCity(normalizeCity(request.city()));
+        event.setImageUrl(blankToNull(request.imageUrl()));
 
         List<Seat> seats = generateSeats(event, request);
         event.setTotalCapacity(seats.size());
@@ -132,6 +133,9 @@ public class EventService {
         }
         if (request.city() != null) {
             event.setCity(normalizeCity(request.city()));
+        }
+        if (request.imageUrl() != null) {
+            event.setImageUrl(blankToNull(request.imageUrl()));
         }
         // capacity/seats deliberately untouched
         long available = seatRepository.countByEventIdAndStatus(id, SeatStatus.AVAILABLE);
@@ -248,6 +252,10 @@ public class EventService {
         };
     }
 
+    private static String blankToNull(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
     /** Trims, and stores blank as null so blank cities never show up in the filter list. */
     private String normalizeCity(String city) {
         return StringUtils.hasText(city) ? city.trim() : null;
@@ -361,7 +369,8 @@ public class EventService {
                 e.getCreatedAt(),
                 e.getCategory(),
                 e.getCity(),
-                Math.max(0, e.getTotalCapacity() - availableSeats)
+                Math.max(0, e.getTotalCapacity() - availableSeats),
+                e.getImageUrl()
         );
     }
 

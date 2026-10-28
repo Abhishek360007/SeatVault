@@ -260,10 +260,21 @@ async function api(path, { method = "GET", body, auth = true } = {}) {
 /* --------------------------- categorisation ----------------------------- */
 // Category is stored on the event; the gradient varies per event so cards in the
 // same category still look distinct.
+// Poster photo: the event's own imageUrl, else one of the two bundled photos for its
+// category, picked by id. EventImages.posterFor applies the same rule for emails.
+// The gradient sits underneath as a fallback while (or if) the photo loads.
 function posterStyle(ev) {
-    const base = CATEGORY_STYLE[ev.category] || CATEGORY_STYLE.OTHER;
+    const key = CATEGORY_STYLE[ev.category] ? ev.category : "OTHER";
+    const base = CATEGORY_STYLE[key];
     const grad = GRADS[hashInt(ev.id + ev.title) % GRADS.length];
-    return { cat: base.label, emoji: base.emoji, grad };
+    const n = (((ev.id || 0) % 2) + 2) % 2 + 1;
+    const img = ev.imageUrl || `/img/events/${key.toLowerCase()}-${n}.jpg`;
+    const imgSm = img.startsWith("/img/events/") ? img.replace(/\.jpg$/, "-sm.jpg") : img;
+    return {
+        cat: base.label, emoji: base.emoji, grad, img,
+        bg: `url("${imgSm}") center / cover no-repeat, ${grad}`,
+        bgLarge: `url("${img}") center / cover no-repeat, ${grad}`,
+    };
 }
 
 /* --------------------------- seat tier model ---------------------------- */
@@ -651,7 +662,7 @@ function scrollToEvents() {
 }
 
 function eventCard(ev) {
-    const { cat, emoji, grad } = posterStyle(ev);
+    const { cat, bg } = posterStyle(ev);
     const ratio = ev.totalCapacity ? ev.availableSeats / ev.totalCapacity : 0;
     const soldOut = ev.availableSeats === 0;
     const low = !soldOut && ratio < 0.2;
@@ -664,9 +675,8 @@ function eventCard(ev) {
     card.setAttribute("role", "button");
     card.setAttribute("aria-label", `${ev.title} at ${ev.venue}, ${availTxt}, ${priceTxt}`);
     card.innerHTML = `
-        <div class="ec-poster" style="background:${grad}">
+        <div class="ec-poster" style='background:${bg}'>
             <span class="ec-cat">${esc(cat)}</span>
-            <span class="ec-emoji" aria-hidden="true">${emoji}</span>
             ${soldOut ? `<span class="ec-soldout-badge">Sold out</span>` : ""}
             ${state.user?.role === "ADMIN" ? `<button class="ec-admin-del" title="Delete event" aria-label="Delete ${esc(ev.title)}">🗑</button>` : ""}
         </div>
@@ -703,8 +713,8 @@ async function openBooking(ev, { push = true } = {}) {
     document.title = `${ev.title} · SeatVault`;
     state.selected.clear();
     state.priceColors = new Map();
-    const { cat, emoji, grad } = posterStyle(ev);
-    $("#bookingBanner").style.background = grad;
+    const { cat, bgLarge } = posterStyle(ev);
+    $("#bookingBanner").style.background = bgLarge;
     $("#bbCat").textContent = cat;
     $("#bbTitle").textContent = ev.title;
     $("#bbVenue").textContent = "📍 " + ev.venue + (ev.city ? `, ${ev.city}` : "");
@@ -950,7 +960,7 @@ async function openCheckout(booking) {
 }
 
 function renderCheckout(b, ev) {
-    const { cat, emoji, grad } = posterStyle(ev);
+    const { cat, bgLarge } = posterStyle(ev);
     const when = ev.eventDateTime ? new Date(ev.eventDateTime) : null;
     const place = [ev.venue, ev.city].filter(Boolean).join(", ");
     $("#coEventTitle").textContent = b.eventTitle;
@@ -964,9 +974,9 @@ function renderCheckout(b, ev) {
     $("#coTotal").textContent = money(b.amountMinor, b.currency);
     $("#coRef").textContent = b.reference || "—";
 
-    $("#coPassHead").style.background = grad;
+    $("#coPassHead").style.background = bgLarge;
     $("#coPassCat").textContent = cat;
-    $("#coPassEmoji").textContent = emoji;
+    $("#coPassEmoji").textContent = "";
     $("#coPassTitle").textContent = b.eventTitle;
     $("#coPassDate").textContent = when ? when.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "—";
     $("#coPassTime").textContent = when ? when.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "—";
@@ -1257,7 +1267,7 @@ function renderPass() {
     const { passes, index, booking, event } = passState;
     const p = passes[index];
     const when = event?.eventDateTime ? new Date(event.eventDateTime) : null;
-    const { grad } = posterStyle(event || { id: booking.eventId, title: booking.eventTitle });
+    const { bgLarge } = posterStyle(event || { id: booking.eventId, title: booking.eventTitle });
     const place = event ? [event.venue, event.city].filter(Boolean).join(", ") : "";
     $("#passCard").innerHTML = `
         <div class="wallet-top"><span class="logo">🎟️</span> SeatVault</div>
@@ -1275,7 +1285,7 @@ function renderPass() {
             </div>
             <div class="wallet-qr"><img src="${p.qrPng}" alt="QR code for seat ${esc(p.seatLabel)}"/></div>
         </div>
-        <div class="wallet-art" style="background:${grad}"></div>
+        <div class="wallet-art" style='background:${bgLarge}'></div>
         ${p.checkedInAt ? `<div class="wallet-used"><span>✓ Checked in ${esc(new Date(p.checkedInAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }))}</span></div>` : ""}`;
     $("#passCounter").textContent = `Ticket ${index + 1} of ${passes.length}`;
     $("#passPrev").disabled = index === 0;
@@ -1485,6 +1495,7 @@ $("#createForm").addEventListener("submit", async e => {
         description: f.description.value.trim() || null,
         category: f.category.value,
         city: f.city.value.trim() || null,
+        imageUrl: f.imageUrl.value.trim() || null,
         eventDateTime: new Date(f.eventDateTime.value).toISOString(),
         currency: (f.currency?.value || "INR").trim().toUpperCase(),
         // Rupees in the form → minor units (paise) for the API.

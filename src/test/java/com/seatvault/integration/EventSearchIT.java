@@ -130,7 +130,7 @@ class EventSearchIT extends AbstractIntegrationTest {
     private Long create(String title, EventCategory category, String city, int daysAhead, long basePriceMinor) {
         EventRequest request = new EventRequest(title, null, title + " Arena",
                 NOW.plus(daysAhead, ChronoUnit.DAYS), 4, null, null,
-                "INR", basePriceMinor, 0L, null, null, category, city);
+                "INR", basePriceMinor, 0L, null, null, category, city, null);
         return eventService.create(request).id();
     }
 

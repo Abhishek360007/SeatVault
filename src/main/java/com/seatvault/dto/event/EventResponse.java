@@ -32,6 +32,7 @@ public record EventResponse(
         Instant createdAt,
         EventCategory category,
         String city,
-        long popularity
+        long popularity,
+        String imageUrl
 ) {
 }

@@ -170,7 +170,7 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 .events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 22px; }
 .event-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: transform .18s, border .18s, box-shadow .18s; display: flex; flex-direction: column; }
 .event-card:hover { transform: translateY(-4px); border-color: var(--border-2); box-shadow: var(--shadow); }
-.ec-poster { height: 150px; position: relative; display: flex; align-items: flex-end; padding: 14px; }
+.ec-poster { height: 170px; position: relative; display: flex; align-items: flex-end; padding: 14px; overflow: hidden; }
 .ec-poster::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, rgba(0,0,0,.55)); }
 .ec-cat { position: relative; z-index: 1; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: rgba(0,0,0,.45); backdrop-filter: blur(4px); padding: 5px 11px; border-radius: 999px; color: #fff; }
 .ec-emoji { position: absolute; right: 14px; top: 12px; font-size: 2.2rem; z-index: 1; filter: drop-shadow(0 4px 10px rgba(0,0,0,.4)); }
@@ -229,8 +229,9 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 /* ------------------------------ booking view ------------------------------ */
 .back-btn { background: none; border: none; color: var(--muted); font: inherit; font-weight: 700; cursor: pointer; padding: 6px 0; margin-bottom: 16px; }
 .back-btn:hover { color: var(--text); }
-.booking-banner { position: relative; height: 200px; border-radius: 20px; overflow: hidden; display: flex; align-items: flex-end; padding: 28px; margin-bottom: 26px; border: 1px solid var(--border); }
-.bb-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent, rgba(0,0,0,.6)); }
+.booking-banner { position: relative; height: 260px; border-radius: 20px; overflow: hidden; display: flex; align-items: flex-end; padding: 28px; margin-bottom: 26px; border: 1px solid var(--border); }
+.bb-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.05) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,.82) 100%), linear-gradient(90deg, rgba(0,0,0,.45), transparent 65%); }
+.bb-content h1, .bb-meta { text-shadow: 0 2px 12px rgba(0,0,0,.55); }
 /* The banner is always a dark gradient, so its text is light in both themes. */
 .bb-content { position: relative; z-index: 1; color: #fff; }
 .bb-cat { font-size: .7rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; background: rgba(0,0,0,.4); padding: 5px 12px; border-radius: 999px; }
@@ -368,7 +369,7 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 .co-terms input { margin-top: 2px; flex: none; }
 
 .pass { border-radius: 18px; overflow: hidden; border: 1px solid var(--border); background: var(--surface-2); }
-.pass-head { position: relative; height: 110px; display: flex; align-items: flex-end; justify-content: space-between; padding: 14px; }
+.pass-head { position: relative; height: 130px; display: flex; align-items: flex-end; justify-content: space-between; padding: 14px; }
 .pass-head::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 20%, rgba(0,0,0,.45)); }
 .pass-cat { position: relative; z-index: 1; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: rgba(0,0,0,.45); color: #fff; padding: 5px 11px; border-radius: 999px; }
 .pass-emoji { position: relative; z-index: 1; font-size: 2.2rem; }
@@ -405,7 +406,7 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 .wallet-row > div:nth-child(2):not(:last-child) { text-align: center; }
 .wallet-qr { background: #fff; border-radius: 16px; padding: 10px; width: 210px; margin: 8px auto 18px; }
 .wallet-qr img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
-.wallet-art { height: 64px; }
+.wallet-art { height: 110px; }
 .wallet-used { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(15,23,42,.6); pointer-events: none; }
 .wallet-used span { background: #047857; color: #fff; font-weight: 800; padding: 8px 16px; border-radius: 999px; transform: rotate(-8deg); }
 .pass-nav { display: flex; align-items: center; justify-content: space-between; }

@@ -143,6 +143,8 @@ public class EmailComposer {
         m.put("refundReason", payment == null ? "" : payment.getFailureReason());
         m.put("ticketsUrl", baseUrl + "/?tickets");
         m.put("eventUrl", baseUrl + "/?event=" + event.getId());
+        String poster = com.seatvault.domain.EventImages.posterFor(event);
+        m.put("eventImage", poster.startsWith("https://") ? poster : baseUrl + poster);
         m.put("baseUrl", baseUrl);
         return m;
     }

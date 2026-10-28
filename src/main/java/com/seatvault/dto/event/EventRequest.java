@@ -88,7 +88,16 @@ public record EventRequest(
         EventCategory category,
 
         @Size(max = 100, message = "city must be at most 100 characters")
-        String city
+        String city,
+
+        /**
+         * Optional poster: a bundled photo path or an https:// image URL. Anything else
+         * (javascript:, data:, http://) is rejected because the UI renders it as an image.
+         */
+        @Size(max = 500)
+        @Pattern(regexp = "^(/img/events/[a-z0-9-]+\\.jpg|https://[^\\s\"'()<>]+)$",
+                message = "imageUrl must be /img/events/<name>.jpg or an https:// URL")
+        String imageUrl
 ) {
     /**
      * An optional price band applied to the front rows of a grid event.

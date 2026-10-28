@@ -44,7 +44,7 @@ class EventServiceTest {
         });
 
         EventResponse response = eventService.create(
-                new EventRequest("Concert", "Live", "Arena", FUTURE, 3, null, null, null, null, null, null, null, null, null));
+                new EventRequest("Concert", "Live", "Arena", FUTURE, 3, null, null, null, null, null, null, null, null, null, null));
 
         assertThat(response.id()).isEqualTo(100L);
         assertThat(response.totalCapacity()).isEqualTo(3);
@@ -62,7 +62,7 @@ class EventServiceTest {
     void createWithGridGeneratesRowColumnLabels() {
         when(eventRepository.save(any(Event.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        eventService.create(new EventRequest("Play", "d", "Theatre", FUTURE, null, 2, 3, null, null, null, null, null, null, null));
+        eventService.create(new EventRequest("Play", "d", "Theatre", FUTURE, null, 2, 3, null, null, null, null, null, null, null, null));
 
         ArgumentCaptor<Event> saved = ArgumentCaptor.forClass(Event.class);
         org.mockito.Mockito.verify(eventRepository).save(saved.capture());
@@ -75,7 +75,7 @@ class EventServiceTest {
     @Test
     void createWithoutAnySeatingStrategyIsRejected() {
         assertThatThrownBy(() -> eventService.create(
-                new EventRequest("Bad", "d", "Nowhere", FUTURE, null, null, null, null, null, null, null, null, null, null)))
+                new EventRequest("Bad", "d", "Nowhere", FUTURE, null, null, null, null, null, null, null, null, null, null, null)))
                 .isInstanceOf(BadRequestException.class);
     }
 
@@ -84,12 +84,14 @@ class EventServiceTest {
         when(eventRepository.save(any(Event.class))).thenAnswer(inv -> inv.getArgument(0));
 
         EventResponse movie = eventService.create(new EventRequest("Film", "d", "PVR", FUTURE, 2,
-                null, null, null, null, null, null, null, EventCategory.MOVIE, "  Pune "));
+                null, null, null, null, null, null, null, EventCategory.MOVIE, "  Pune ", "/img/events/movie-2.jpg"));
         EventResponse untagged = eventService.create(new EventRequest("Misc", "d", "Hall", FUTURE, 2,
-                null, null, null, null, null, null, null, null, "   "));
+                null, null, null, null, null, null, null, null, "   ", "  "));
 
         assertThat(movie.category()).isEqualTo(EventCategory.MOVIE);
         assertThat(movie.city()).isEqualTo("Pune");
+        assertThat(movie.imageUrl()).isEqualTo("/img/events/movie-2.jpg");
+        assertThat(untagged.imageUrl()).isNull(); // blank → use the category photo
         assertThat(untagged.category()).isEqualTo(EventCategory.OTHER);
         assertThat(untagged.city()).isNull();
     }

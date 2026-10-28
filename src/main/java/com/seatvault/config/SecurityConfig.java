@@ -58,6 +58,10 @@ public class SecurityConfig {
             "/app.js",
             "/styles.css",
             "/vendor/**",                   // bundled SockJS + STOMP clients
+            "/img/**",                      // bundled event photos
+            "/credits.html",
+            "/PrivacyPolicy.html",
+            "/TermsOfService.html",
             "/favicon.ico"
     };
 
@@ -91,7 +95,8 @@ public class SecurityConfig {
             "frame-src https://api.razorpay.com https://checkout.razorpay.com",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
-            "img-src 'self' data:",
+            // https: so an admin can give an event a hosted poster image.
+            "img-src 'self' data: https:",
             "connect-src 'self'",
             "base-uri 'self'",
             "form-action 'self'",

@@ -59,6 +59,10 @@ public class Event extends BaseEntity {
     @Column(length = 100)
     private String city;
 
+    /** Poster image: a bundled /img/events/... path or an https URL. Null = category photo. */
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(name = "event_datetime", nullable = false)
     private Instant eventDateTime;
 
