@@ -5,8 +5,17 @@
 [![Java Version](https://img.shields.io/badge/Java-17-orange.svg)](https://openjdk.org/projects/jdk/17/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-green.svg)](https://spring.io/projects/spring-boot)
 [![Code Coverage](https://img.shields.io/badge/Coverage-40%25%20Line%20Enforced-blue.svg)](#code-coverage)
+[![Live demo](https://img.shields.io/badge/Live%20demo-seatvault.onrender.com-46E3B7?logo=render&logoColor=white)](https://seatvault.onrender.com)
 
 SeatVault is a high-performance, concurrency-safe, enterprise event ticketing platform built with Spring Boot 3, PostgreSQL, Redis, and Vanilla JS. It is designed to handle high-demand ticket drops, zero-overselling guarantees, payment idempotency, virtual waiting rooms, PDF e-ticket generation, gate check-in scanning, and production observability.
+
+### 🌐 Live demo: **[seatvault.onrender.com](https://seatvault.onrender.com)**
+
+Create an account to browse events, pick seats on the live map, check out and get your QR e-ticket.
+Payments run in **test mode** (no real money moves; choose "Payment succeeds" at checkout).
+
+> Hosted on Render's free tier: if nobody has visited for a while, the first page load takes
+> **2-3 minutes** while the app wakes up. After that it's fast.
 
 ## 📸 Screenshots
 
@@ -245,6 +254,16 @@ database and a Redis instance (all free tier, Singapore region) and wires them t
 
 Render generates `JWT_SECRET`, `TICKET_HMAC_SECRET` and `PAYMENT_SIMULATED_SECRET` itself, and
 every push to `main` redeploys automatically.
+
+**Demo events:** a fresh database has none. Add a varied set (every category, six cities, tiered
+pricing; all names fictional) with:
+
+```bash
+python scripts/seed_demo_events.py                        # the live site
+python scripts/seed_demo_events.py http://localhost:8080  # a local run
+```
+
+It asks for the admin password without showing it, and skips events that already exist.
 
 **Free-tier limits:** the app sleeps after 15 minutes without visitors (the next visit takes about a
 minute to wake it), it has 512 MB of memory (the JVM is tuned for that in `render.yaml`), and the free
