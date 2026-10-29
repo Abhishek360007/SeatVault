@@ -17,6 +17,12 @@
                 t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
             }
             document.documentElement.setAttribute("data-theme", t);
+            // Hide the hero headline until app.js types it in (no flash of the full
+            // text first). If the script never runs, show it anyway after 3 s.
+            if (!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+                document.documentElement.classList.add("hero-typing");
+                setTimeout(function () { document.documentElement.classList.remove("hero-typing"); }, 3000);
+            }
         })();
     </script>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%9F%EF%B8%8F%3C/text%3E%3C/svg%3E"/>

@@ -162,6 +162,18 @@ code { background: var(--surface-3); padding: 2px 7px; border-radius: 6px; font-
     --accent-a: #6b91ff; --accent-b: #22d3ee; --accent-c: #c084fc;
     filter: drop-shadow(0 6px 28px rgba(107, 145, 255, .35));
 }
+/* Typewriter intro (see typeHeroHeadline in app.js). Hidden characters keep their
+   space, so the headline never reflows while it types. */
+.hero-typing .hero h1 { visibility: hidden; }
+.hero h1 .tw-char { visibility: hidden; }
+.hero h1 .tw-char.on { visibility: visible; }
+.tw-caret {
+    display: inline-block; width: .07em; height: .86em; margin-left: .04em; vertical-align: -.06em;
+    background: var(--primary-2); border-radius: 2px;
+    animation: tw-blink .9s steps(1) infinite; transition: opacity .4s;
+}
+.tw-caret.done { opacity: 0; }
+@keyframes tw-blink { 50% { background: transparent; } }
 @keyframes hero-sheen { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
 @media (prefers-reduced-motion: reduce) { .hero-accent { animation: none; } }
 .hero p { color: var(--muted); font-size: 1.1rem; margin: 18px 0 28px; }

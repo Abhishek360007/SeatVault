@@ -1532,6 +1532,59 @@ const regPassword = $("#registerForm [name='password']");
 if (regEmail) regEmail.addEventListener("input", () => validateEmail(regEmail));
 if (regPassword) regPassword.addEventListener("input", () => validatePassword(regPassword));
 
+/* Hero headline typewriter: types the whole headline in 2 s on each page load. */
+function typeHeroHeadline(totalMs = 2000) {
+    const h1 = document.querySelector(".hero h1");
+    const root = document.documentElement;
+    if (!h1 || h1.dataset.typed) { root.classList.remove("hero-typing"); return; }
+    h1.dataset.typed = "1";
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { root.classList.remove("hero-typing"); return; }
+    // Screen readers get the whole headline at once; <br> counts as a space.
+    const label = [...h1.childNodes].map(n => n.nodeName === "BR" ? " " : n.textContent).join("");
+    h1.setAttribute("aria-label", label.replace(/\s+/g, " ").trim());
+
+    // Wrap every character in a hidden span, keeping <br> and the gradient span intact.
+    const chars = [];
+    const wrap = node => {
+        [...node.childNodes].forEach(child => {
+            if (child.nodeType === Node.TEXT_NODE) {
+                const frag = document.createDocumentFragment();
+                [...child.textContent].forEach(ch => {
+                    const s = document.createElement("span");
+                    s.className = "tw-char";
+                    s.setAttribute("aria-hidden", "true");
+                    s.textContent = ch;
+                    chars.push(s);
+                    frag.appendChild(s);
+                });
+                child.replaceWith(frag);
+            } else if (child.nodeType === Node.ELEMENT_NODE && child.tagName !== "BR") {
+                wrap(child);
+            }
+        });
+    };
+    wrap(h1);
+    const caret = document.createElement("span");
+    caret.className = "tw-caret";
+    caret.setAttribute("aria-hidden", "true");
+    root.classList.remove("hero-typing");
+
+    const start = performance.now();
+    let shown = 0;
+    const step = now => {
+        const target = Math.min(chars.length, Math.ceil(((now - start) / totalMs) * chars.length));
+        while (shown < target) chars[shown++].classList.add("on");
+        // The caret follows the last typed character; it paints its own background, so it
+        // stays visible inside the gradient line too.
+        const last = chars[Math.max(shown - 1, 0)];
+        last.after(caret);
+        if (shown < chars.length) requestAnimationFrame(step);
+        else setTimeout(() => { caret.classList.add("done"); setTimeout(() => caret.remove(), 500); }, 900);
+    };
+    requestAnimationFrame(step);
+}
+typeHeroHeadline();
+
 renderUser();
 loadCities();
 
