@@ -11,6 +11,7 @@ SeatVault is a high-performance, concurrency-safe, enterprise event ticketing pl
 
 ### 🌐 Live demo: **[seatvault.onrender.com](https://seatvault.onrender.com)**
 ### 🎬 Demo video: **[watch the 2-minute walkthrough](https://abhishek360007.github.io/SeatVault/demo/)** (captioned, plays instantly)
+### 📘 Project guide: **[SeatVault-Project-Guide.pdf](docs/SeatVault-Project-Guide.pdf)** (24 pages: features, how it works, architecture and how to present it)
 
 Create an account to browse events, pick seats on the live map, check out and get your QR e-ticket.
 Payments run in **test mode** (no real money moves; choose "Payment succeeds" at checkout).
