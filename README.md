@@ -10,12 +10,15 @@
 SeatVault is a high-performance, concurrency-safe, enterprise event ticketing platform built with Spring Boot 3, PostgreSQL, Redis, and Vanilla JS. It is designed to handle high-demand ticket drops, zero-overselling guarantees, payment idempotency, virtual waiting rooms, PDF e-ticket generation, gate check-in scanning, and production observability.
 
 ### 🌐 Live demo: **[seatvault.onrender.com](https://seatvault.onrender.com)**
+### 🎬 Demo video: **[watch the 2-minute walkthrough](https://abhishek360007.github.io/SeatVault/demo/)** (captioned, plays instantly)
 
 Create an account to browse events, pick seats on the live map, check out and get your QR e-ticket.
 Payments run in **test mode** (no real money moves; choose "Payment succeeds" at checkout).
 
 > Hosted on Render's free tier: if nobody has visited for a while, the first page load takes
 > **2-3 minutes** while the app wakes up. After that it's fast.
+
+[![Demo video: picking seats, checkout with a 5-minute hold, test payment and the booked ticket](docs/demo/demo-preview.gif)](https://abhishek360007.github.io/SeatVault/demo/)
 
 ## 📸 Screenshots
 

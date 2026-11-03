@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SeatVault Demo</title>
+<meta name="description" content="A 2-minute captioned walkthrough of SeatVault: event ticketing that never oversells, with QR e-tickets and gate check-in.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%234f46e5'/%3E%3Crect x='17' y='13' width='26' height='34' rx='4' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b1020;
+    --text: #ffffff;
+    --muted: rgba(226, 232, 240, 0.72);
+    --faint: rgba(226, 232, 240, 0.5);
+    --accent: #a5b4fc;
+    --card: rgba(255, 255, 255, 0.05);
+    --border: rgba(255, 255, 255, 0.1);
+    --primary: #4f46e5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    font-family: Inter, system-ui, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(60% 40% at 10% 0%, rgba(99, 102, 241, 0.35) 0%, transparent 70%),
+      radial-gradient(50% 40% at 100% 100%, rgba(124, 58, 237, 0.3) 0%, transparent 70%),
+      var(--bg);
+    line-height: 1.55;
+  }
+  main { max-width: 1120px; margin: 0 auto; padding: 48px 16px 64px; }
+  .eyebrow { color: var(--accent); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; font-size: 13px; }
+  h1 { font-size: clamp(32px, 5vw, 52px); letter-spacing: -0.03em; line-height: 1.1; margin: 10px 0 12px; }
+  .lead { color: var(--muted); font-size: 18px; max-width: 760px; }
+  .player {
+    margin: 32px 0 20px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.8);
+    background: #000;
+  }
+  video { display: block; width: 100%; height: auto; aspect-ratio: 1280 / 800; }
+  .links { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 40px; }
+  .links a {
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+  }
+  .links a.primary { background: var(--primary); border-color: var(--primary); }
+  .links a:hover { border-color: var(--accent); }
+  h2 { font-size: 20px; letter-spacing: -0.015em; margin-bottom: 14px; }
+  ol { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 10px; }
+  li { display: flex; gap: 12px; align-items: baseline; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: 15px; }
+  li b { color: var(--text); font-weight: 600; }
+  li span { flex-shrink: 0; color: var(--accent); font-weight: 700; font-size: 13px; min-width: 22px; }
+  footer { margin-top: 48px; color: var(--faint); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Product demo · 2 min 23 s</div>
+  <h1>SeatVault</h1>
+  <p class="lead">Event ticketing that never oversells: live seat maps, a checkout that holds your seats while you pay, QR e-tickets and gate check-in. Every step below is captioned in the video.</p>
+
+  <div class="player">
+    <video controls preload="metadata" playsinline poster="demo-preview.gif">
+      <source src="seatvault-demo.mp4" type="video/mp4">
+      Your browser can't play this video. <a href="seatvault-demo.mp4">Download it instead.</a>
+    </video>
+  </div>
+
+  <div class="links">
+    <a class="primary" href="https://github.com/Abhishek360007/SeatVault">Source code on GitHub</a>
+    <a href="https://seatvault.onrender.com">Live app</a>
+  </div>
+
+  <h2>What the video shows</h2>
+  <ol>
+    <li><span>01</span><div><b>Discover events</b>: categories, filters, light and dark themes</div></li>
+    <li><span>02</span><div><b>Live seat map</b>: price tiers, real-time updates over WebSockets</div></li>
+    <li><span>03</span><div><b>Create an account</b>: BCrypt passwords, JWT sessions</div></li>
+    <li><span>04</span><div><b>Pick seats</b> with a live order summary</div></li>
+    <li><span>05</span><div><b>Checkout</b>: seats held for 5 minutes, idempotent test payment</div></li>
+    <li><span>06</span><div><b>Booked</b>, with a PDF e-ticket</div></li>
+    <li><span>07</span><div><b>Wallet passes</b> with signed QR codes</div></li>
+    <li><span>08</span><div><b>Confirmation email</b> through a transactional outbox</div></li>
+    <li><span>09</span><div><b>Gate check-in</b>: admitted once, a second scan shows already used</div></li>
+    <li><span>10</span><div><b>Create events</b> as an admin</div></li>
+  </ol>
+
+  <footer>Built by Abhishek Raj · Java 17 · Spring Boot 3 · PostgreSQL 16 · Redis 7 · WebSockets · OpenPDF + ZXing</footer>
+</main>
+</body>
+</html>
