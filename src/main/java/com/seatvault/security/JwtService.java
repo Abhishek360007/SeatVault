@@ -12,6 +12,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Issues and validates stateless JWTs (HS256).
@@ -19,8 +21,10 @@ import java.util.Date;
  * <p><b>Why stateless JWT?</b> No server-side session store, so the API scales
  * horizontally without sticky sessions or shared session storage — important
  * because the booking system is designed to run as multiple instances (Phase 5
- * Redis lock). The trade-off is that tokens can't be revoked before expiry; we
- * mitigate with a short TTL (configurable, default 60 min).
+ * Redis lock). The usual trade-off is that a JWT stays valid until it expires. We
+ * mitigate that with a short TTL ({@code app.jwt.expiration-minutes}, default 15)
+ * and, for logout, a Redis blocklist keyed by the token's unique id ({@code jti});
+ * see {@link TokenBlocklistService}.
  *
  * <p>The subject is the user's email; the role is carried as a custom claim so the
  * filter can build authorities without a DB hit (though we still load the user to
@@ -44,6 +48,7 @@ public class JwtService {
         Instant now = Instant.now();
         Instant expiry = now.plus(expirationMinutes, ChronoUnit.MINUTES);
         return Jwts.builder()
+                .id(UUID.randomUUID().toString()) // jti: lets logout revoke exactly this token
                 .subject(email)
                 .claim(ROLE_CLAIM, role)
                 .issuedAt(Date.from(now))
@@ -61,16 +66,23 @@ public class JwtService {
     }
 
     /**
+     * Returns the claims if the token is well-formed, correctly signed and unexpired;
+     * empty otherwise. Lets callers validate and read claims with a single parse.
+     */
+    public Optional<Claims> parseValid(String token) {
+        try {
+            return Optional.of(parse(token));
+        } catch (JwtException | IllegalArgumentException ex) {
+            return Optional.empty();
+        }
+    }
+
+    /**
      * Returns true if the token is well-formed, correctly signed, and unexpired.
      * Any {@link JwtException} (bad signature, malformed, expired) means invalid.
      */
     public boolean isValid(String token) {
-        try {
-            parse(token);
-            return true;
-        } catch (JwtException | IllegalArgumentException ex) {
-            return false;
-        }
+        return parseValid(token).isPresent();
     }
 
     private Claims parse(String token) {

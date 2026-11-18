@@ -21,6 +21,14 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.seatvault.domain.RefreshToken;
+import com.seatvault.exception.BadRequestException;
+import com.seatvault.security.TokenBlocklistService;
+import io.jsonwebtoken.Claims;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.Date;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,13 +44,91 @@ class AuthServiceTest {
     @Mock AuthenticationManager authenticationManager;
     @Mock JwtService jwtService;
     @Mock RefreshTokenRepository refreshTokenRepository;
+    @Mock TokenBlocklistService tokenBlocklist;
 
     AuthService authService;
 
     @BeforeEach
     void setUp() {
         authService = new AuthService(userRepository, passwordEncoder, authenticationManager,
-                jwtService, refreshTokenRepository, new JwtProperties("secret-secret-secret-secret-secret-1234", 60, 7));
+                jwtService, refreshTokenRepository, new JwtProperties("secret-secret-secret-secret-secret-1234", 60, 7),
+                tokenBlocklist);
+    }
+
+    @Test
+    void refreshRotatesTheTokenAndIssuesANewAccessToken() {
+        RefreshToken current = new RefreshToken("old-rt", user(), Instant.now().plusSeconds(3600));
+        when(refreshTokenRepository.findByTokenForUpdate("old-rt")).thenReturn(Optional.of(current));
+        when(jwtService.generateToken("bob@example.com", "USER")).thenReturn("new-jwt");
+
+        AuthResponse response = authService.refresh("old-rt");
+
+        assertThat(current.isRevoked()).isTrue();
+        assertThat(response.token()).isEqualTo("new-jwt");
+        assertThat(response.refreshToken()).isNotEqualTo("old-rt");
+        ArgumentCaptor<RefreshToken> saved = ArgumentCaptor.forClass(RefreshToken.class);
+        verify(refreshTokenRepository, times(2)).save(saved.capture());
+        RefreshToken rotated = saved.getAllValues().get(1);
+        assertThat(rotated.getParentToken()).isEqualTo("old-rt");
+        assertThat(rotated.isRevoked()).isFalse();
+    }
+
+    @Test
+    void refreshWithARevokedTokenRevokesAllUserTokensInOneUpdate() {
+        RefreshToken reused = new RefreshToken("stolen-rt", user(), Instant.now().plusSeconds(3600));
+        reused.setRevoked(true);
+        when(refreshTokenRepository.findByTokenForUpdate("stolen-rt")).thenReturn(Optional.of(reused));
+        when(refreshTokenRepository.revokeAllForUser(7L)).thenReturn(3);
+
+        assertThatThrownBy(() -> authService.refresh("stolen-rt"))
+                .isInstanceOf(BadRequestException.class);
+
+        verify(refreshTokenRepository).revokeAllForUser(7L);
+        verify(refreshTokenRepository, never()).findAll();   // no full-table load
+        verifyNoInteractions(jwtService);
+    }
+
+    @Test
+    void refreshDoesNotRollBackTheReuseRevocationWhenItThrows() throws Exception {
+        // The reuse branch writes (revokes all tokens) and then throws BadRequestException.
+        // A default @Transactional would roll that write back; noRollbackFor keeps it.
+        Transactional tx = AuthService.class.getMethod("refresh", String.class).getAnnotation(Transactional.class);
+        assertThat(tx).isNotNull();
+        assertThat(tx.noRollbackFor()).contains(BadRequestException.class);
+    }
+
+    @Test
+    void refreshRejectsAnExpiredToken() {
+        RefreshToken expired = new RefreshToken("old-rt", user(), Instant.now().minusSeconds(1));
+        when(refreshTokenRepository.findByTokenForUpdate("old-rt")).thenReturn(Optional.of(expired));
+
+        assertThatThrownBy(() -> authService.refresh("old-rt")).isInstanceOf(BadRequestException.class);
+        verify(refreshTokenRepository, never()).revokeAllForUser(any());
+    }
+
+    @Test
+    void logoutRevokesTheRefreshTokenAndBlocklistsTheAccessToken() {
+        RefreshToken current = new RefreshToken("rt", user(), Instant.now().plusSeconds(3600));
+        when(refreshTokenRepository.findByToken("rt")).thenReturn(Optional.of(current));
+        Instant exp = Instant.now().plusSeconds(600);
+        Claims claims = mock(Claims.class);
+        when(claims.getId()).thenReturn("jti-123");
+        when(claims.getExpiration()).thenReturn(Date.from(exp));
+        when(jwtService.parseValid("access-jwt")).thenReturn(Optional.of(claims));
+
+        authService.logout("rt", "access-jwt");
+
+        assertThat(current.isRevoked()).isTrue();
+        verify(tokenBlocklist).revoke("jti-123", Date.from(exp).toInstant());
+    }
+
+    @Test
+    void logoutWithoutAnAccessTokenOnlyRevokesTheRefreshToken() {
+        when(refreshTokenRepository.findByToken("rt")).thenReturn(Optional.empty());
+
+        authService.logout("rt", null);
+
+        verifyNoInteractions(tokenBlocklist);
     }
 
     @Test

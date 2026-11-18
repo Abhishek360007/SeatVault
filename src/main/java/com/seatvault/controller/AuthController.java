@@ -7,10 +7,12 @@ import com.seatvault.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -48,10 +50,15 @@ public class AuthController {
         return ResponseEntity.ok(authService.refresh(request.refreshToken()));
     }
 
-    @Operation(summary = "Log out and invalidate the refresh token")
+    @Operation(summary = "Log out: revoke the refresh token and, if sent as a Bearer header, the access token")
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@Valid @RequestBody com.seatvault.dto.auth.RefreshRequest request) {
-        authService.logout(request.refreshToken());
+    public ResponseEntity<Void> logout(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
+            @Valid @RequestBody com.seatvault.dto.auth.RefreshRequest request) {
+        String accessToken = (authorization != null && authorization.startsWith("Bearer "))
+                ? authorization.substring("Bearer ".length())
+                : null;
+        authService.logout(request.refreshToken(), accessToken);
         return ResponseEntity.noContent().build();
     }
 }

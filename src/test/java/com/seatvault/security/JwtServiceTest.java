@@ -31,6 +31,23 @@ class JwtServiceTest {
     }
 
     @Test
+    void everyTokenGetsAUniqueIdForRevocation() {
+        JwtService jwt = jwtService(60);
+
+        String jti1 = jwt.parseValid(jwt.generateToken("a@b.com", "USER")).orElseThrow().getId();
+        String jti2 = jwt.parseValid(jwt.generateToken("a@b.com", "USER")).orElseThrow().getId();
+
+        assertThat(jti1).isNotBlank();
+        assertThat(jti1).isNotEqualTo(jti2);
+    }
+
+    @Test
+    void parseValidIsEmptyForAnInvalidToken() {
+        assertThat(jwtService(60).parseValid("not-a-jwt")).isEmpty();
+        assertThat(jwtService(-1).parseValid(jwtService(-1).generateToken("a@b.com", "USER"))).isEmpty();
+    }
+
+    @Test
     void rejectsMalformedToken() {
         assertThat(jwtService(60).isValid("not-a-jwt")).isFalse();
     }
