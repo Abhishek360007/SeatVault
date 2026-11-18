@@ -1,5 +1,6 @@
 package com.seatvault.security;
 
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,13 +15,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Optional;
 
 /**
- * Runs once per request: if a valid {@code Authorization: Bearer <jwt>} is present
- * and no authentication is set yet, it loads the user and populates the
- * {@link SecurityContextHolder}. Invalid/missing tokens are simply ignored here —
- * authorization rules downstream decide whether anonymous access is allowed, and
- * the entry point returns 401 for protected routes.
+ * Runs once per request: if a valid, non-revoked {@code Authorization: Bearer <jwt>}
+ * is present and no authentication is set yet, it loads the user and populates the
+ * {@link SecurityContextHolder}. Invalid, revoked (logged-out) or missing tokens are
+ * simply ignored here — authorization rules downstream decide whether anonymous
+ * access is allowed, and the entry point returns 401 for protected routes.
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -29,10 +31,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final AppUserDetailsService userDetailsService;
+    private final TokenBlocklistService tokenBlocklist;
 
-    public JwtAuthenticationFilter(JwtService jwtService, AppUserDetailsService userDetailsService) {
+    public JwtAuthenticationFilter(JwtService jwtService,
+                                   AppUserDetailsService userDetailsService,
+                                   TokenBlocklistService tokenBlocklist) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.tokenBlocklist = tokenBlocklist;
     }
 
     @Override
@@ -47,8 +53,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = header.substring(BEARER_PREFIX.length());
-        if (jwtService.isValid(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
-            String email = jwtService.extractEmail(token);
+        Optional<Claims> claims = jwtService.parseValid(token);
+        if (claims.isPresent()
+                && !tokenBlocklist.isRevoked(claims.get().getId())
+                && SecurityContextHolder.getContext().getAuthentication() == null) {
+            String email = claims.get().getSubject();
             // Re-load the user so a deleted/disabled account can't keep using a live token.
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
             UsernamePasswordAuthenticationToken authentication =

@@ -54,7 +54,7 @@ Payments run in **test mode** (no real money moves; choose "Payment succeeds" at
 - **Checkout & Payments**: Razorpay order-based checkout (UPI, cards, netbanking) with signed callback verification, signed webhooks and a reconciliation sweep, all finishing through one idempotent path; late payments are refunded automatically. Human-readable booking references (`SV-7KX4-92QD`).
 - **Email Notifications**: booking confirmation (PDF tickets attached), payment receipt, cancellation, refund and a 24-hour event reminder, through a transactional outbox with SKIP LOCKED dispatch and exponential-backoff retries. Mailpit catches them locally.
 - **E-Ticket & Gate Check-in**: OpenPDF document rendering, ZXing QR code generation, and HMAC-SHA256 digital signature verification for gate check-in scanners. Generated on demand at download time (not eagerly at payment confirmation).
-- **JWT Security & Token Revocation**: 15-min access tokens, 7-day Redis refresh tokens, token revocation blocklist, and a startup guard that halts boot in `prod` if secrets are left at dev defaults.
+- **JWT Security & Token Revocation**: 15-min access tokens, 7-day rotating refresh tokens stored in PostgreSQL with reuse detection, a Redis `jti` blocklist so a logged-out access token stops working immediately, and a startup guard that halts boot in `prod` if secrets are left at dev defaults.
 - **Rate Limiting & Safety**: IP-based rate limiting on registration, login, event browsing, and waiting-room join; per-user rate limiting on seat holds; hard page-size capping on all pageable queries; a trusted-proxy allowlist so `X-Forwarded-For` can't be spoofed to dodge it.
 - **Production Observability**: Prometheus metrics (`/actuator/prometheus`), MDC `X-Request-Id` request tracing, and profile-based JSON logging.
 - **CI/CD Quality Gates**: a 40% line-coverage floor enforced via JaCoCo in Maven `verify` (set from measured unit-test coverage, meant to be raised as tests grow — see the comment in `pom.xml`), OWASP Dependency-Check failing the build on CVSS ≥ 7.0, and a Trivy image scan failing on HIGH/CRITICAL CVEs.
@@ -71,11 +71,11 @@ Payments run in **test mode** (no real money moves; choose "Payment succeeds" at
                                              │ REST / JSON
                                              ▼
                       ┌──────────────────────────────────────────────┐
-                      │          Spring Boot 3.3 Gateway             │
+                      │          Spring Boot 3.5 Gateway             │
                       │ ┌──────────────────────────────────────────┐ │
-                      │ │ RequestIdFilter (MDC X-Request-Id)       │ │
+                      │ │ MdcTraceFilter (MDC X-Request-Id)        │ │
                       │ │ RateLimitInterceptor (Redis IP Limiter)  │ │
-                      │ │ JwtAuthenticationFilter (Token & Revoc)  │ │
+                      │ │ JwtAuthenticationFilter (JWT + blocklist)│ │
                       │ └──────────────────────────────────────────┘ │
                       └──────┬───────────────────────────────┬───────┘
                              │                               │
@@ -84,8 +84,9 @@ Payments run in **test mode** (no real money moves; choose "Payment succeeds" at
               │     PostgreSQL Database      ││         Redis Cache          │
               │ ┌──────────────────────────┐ ││ ┌──────────────────────────┐ │
               │ │ Flyway Schema Migrations │ ││ │ FIFO Waiting Room ZSET   │ │
-              │ │ Events, Seats, Bookings  │ ││ │ Refresh Tokens & Blacklist│ │
+              │ │ Events, Seats, Bookings  │ ││ │ JWT jti Blocklist (TTL)  │ │
               │ │ Payments, Users (BCrypt) │ ││ │ IP Rate Limit Counters   │ │
+              │ │ Refresh Tokens (rotated) │ ││ │ Event & Seat-Map Cache   │ │
               │ └──────────────────────────┘ ││ └──────────────────────────┘ │
               └──────────────────────────────┘└──────────────────────────────┘
 ```
@@ -115,9 +116,11 @@ Payments run in **test mode** (no real money moves; choose "Payment succeeds" at
 - **Hold Expiry**: Scheduled `HoldReleaseService` releases abandoned holds after 5 minutes.
 
 ### 4. JWT Authentication & Token Management
-- Short-lived JWT access tokens (15 mins) and long-lived opaque refresh tokens (7 days stored in Redis).
-- `POST /api/v1/auth/refresh` exchanges refresh tokens for new access tokens.
-- `POST /api/v1/auth/logout` revokes refresh tokens and blocklists the active access token JTI in Redis.
+- Short-lived JWT access tokens (15 mins, HS256, each with a unique `jti`) and long-lived opaque refresh tokens (7 days, stored in the PostgreSQL `refresh_tokens` table).
+- `POST /api/v1/auth/refresh` **rotates** the refresh token: the presented token is revoked and a new one issued. The token row is locked (`SELECT ... FOR UPDATE`), so two concurrent refreshes of one token can't both succeed.
+- **Reuse detection**: presenting an already-rotated (revoked) refresh token means it may have been stolen, so every active refresh token of that user is revoked in one `UPDATE` and they must sign in again. The revocation is committed even though the request fails (`noRollbackFor`).
+- `POST /api/v1/auth/logout` (body: `refreshToken`; optional `Authorization: Bearer <access token>`) revokes the refresh token and writes the access token's `jti` to a Redis blocklist (`jwt:blocklist:<jti>`) with a TTL equal to its remaining lifetime, so it is rejected immediately on every instance. The SPA's *Sign out* sends both.
+- If Redis is unreachable the blocklist check fails open (the token stays valid until its 15-minute expiry) rather than rejecting every request.
 
 ### 5. Production Hardening & Safety
 - **Startup Guard**: `ProductionSecurityValidator` halts boot in the `prod` profile if `ADMIN_PASSWORD` is `admin12345`, or `JWT_SECRET`/`TICKET_HMAC_SECRET` are missing or still contain `change-me`.
@@ -131,7 +134,7 @@ Payments run in **test mode** (no real money moves; choose "Payment succeeds" at
 
 | Layer | Technology |
 | --- | --- |
-| **Language & Runtime** | Java 17, Spring Boot 3.3.1 |
+| **Language & Runtime** | Java 17, Spring Boot 3.5 |
 | **Database** | PostgreSQL 16, Flyway 10 |
 | **Caching & Queue** | Redis 7 (Sorted Sets, String TTLs, Atomic Lua) |
 | **Security** | Spring Security 6, JJWT 0.12, BCrypt |
@@ -149,8 +152,8 @@ Payments run in **test mode** (no real money moves; choose "Payment succeeds" at
 | --- | --- | --- | --- |
 | `POST` | `/api/v1/auth/register` | Public | Register new user account |
 | `POST` | `/api/v1/auth/login` | Public | Authenticate & receive access + refresh token |
-| `POST` | `/api/v1/auth/refresh` | Public | Refresh expired access token |
-| `POST` | `/api/v1/auth/logout` | Authenticated | Revoke refresh token & blocklist access token |
+| `POST` | `/api/v1/auth/refresh` | Public (needs refresh token) | Rotate the refresh token & issue a new access token |
+| `POST` | `/api/v1/auth/logout` | Public (needs refresh token; Bearer optional) | Revoke refresh token & blocklist the access token's `jti` |
 
 ### Events & Waiting Room
 | Method | Endpoint | Access | Description |

@@ -12,6 +12,7 @@
 const API = "/api/v1";
 const TOKEN_KEY = "seatvault.jwt";
 const USER_KEY = "seatvault.user";
+const REFRESH_KEY = "seatvault.refresh";
 
 // Visual palette assigned to distinct seat prices (highest price = first colour).
 const TIER_COLORS = ["#b45309", "#0e7490", "#2f5fe0", "#047857", "#b91c1c"];
@@ -305,11 +306,22 @@ function setSession(auth) {
     state.user = { userId: auth.userId, email: auth.email, fullName: auth.fullName, role: auth.role };
     localStorage.setItem(TOKEN_KEY, state.token);
     localStorage.setItem(USER_KEY, JSON.stringify(state.user));
+    if (auth.refreshToken) localStorage.setItem(REFRESH_KEY, auth.refreshToken);
     renderUser();
 }
 function logout() {
+    // Revoke server-side too: the refresh token (DB) and this access token (Redis
+    // blocklist). Fire-and-forget with plain fetch, so a failure here (or a 401) can't
+    // loop back into logout(); the local session is cleared either way.
+    const refreshToken = localStorage.getItem(REFRESH_KEY);
+    if (refreshToken) {
+        const headers = { "Content-Type": "application/json" };
+        if (state.token) headers["Authorization"] = `Bearer ${state.token}`;
+        fetch(API + "/auth/logout", { method: "POST", headers, body: JSON.stringify({ refreshToken }) })
+            .catch(() => { /* offline: the tokens still expire on their own */ });
+    }
     state.token = null; state.user = null; state.booking = null;
-    localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); localStorage.removeItem(REFRESH_KEY);
     clearInterval(state.countdown); state.checkout = null;
     renderUser(); showHome();
     toast("Signed out.", "info");
